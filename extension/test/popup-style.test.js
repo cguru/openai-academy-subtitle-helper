@@ -53,3 +53,10 @@ test("popup exposes subtitle y position controls above video navigation by defau
   assert.match(popupHtml, /id="bottom-offset"[^>]+max="180"[^>]+value="96"/);
   assert.match(popupCss, /utility-row/);
 });
+
+test("popup exposes parallel job control with default three workers", () => {
+  assert.match(popupHtml, /id="parallel-jobs"/);
+  assert.match(popupHtml, /<option value="3" selected>3<\/option>/);
+  assert.match(popupJs, /parallelJobs/);
+  assert.match(popupJs, /parallelJobsElement\.value = stored\.parallelJobs \?\? "3"/);
+});

@@ -8,6 +8,9 @@ param(
 
     [int] $ChunkSize = 25,
 
+    [ValidateRange(1, 5)]
+    [int] $ParallelJobs = 3,
+
     [string] $TargetLanguageCode = "ko",
 
     [string] $TargetLanguageName = "Korean",
@@ -205,11 +208,36 @@ if ($TranslateWithCodex) {
             Set-Content -LiteralPath $enChunk -Encoding UTF8
 
         $chunkPlans += [pscustomobject]@{
+            Index = $chunkPlans.Count + 1
             StartId = $startId
             EndId = $endId
             EnglishPath = $enChunk
             TranslatedPath = $translatedChunk
         }
+    }
+
+    function Write-GenerationProgress {
+        param(
+            [Parameter(Mandatory = $true)][string] $Path,
+            [Parameter(Mandatory = $true)][array] $ChunkPlans,
+            [Parameter(Mandatory = $true)][object] $Progress,
+            [Parameter(Mandatory = $true)][string] $Status,
+            [int] $CurrentChunk = $Progress.CurrentChunk
+        )
+
+        @{
+            videoId = $vimeoId
+            targetLanguageCode = $TargetLanguageCode
+            targetLanguageName = $TargetLanguageName
+            sourceCueCount = $cues.Count
+            totalChunks = $ChunkPlans.Count
+            completedChunks = $Progress.CompletedChunks
+            currentChunk = $CurrentChunk
+            chunkSize = $ChunkSize
+            parallelJobs = $ParallelJobs
+            status = $Status
+            updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
+        } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $Path -Encoding UTF8
     }
 
     function Get-ChunkPlanProgress {
@@ -231,80 +259,154 @@ if ($TranslateWithCodex) {
         }
     }
 
-    $progressPath = Join-Path $chunkDir "progress.json"
-    @{
-        videoId = $vimeoId
-        targetLanguageCode = $TargetLanguageCode
-        targetLanguageName = $TargetLanguageName
-        sourceCueCount = $cues.Count
-        totalChunks = $chunkPlans.Count
-        chunkSize = $ChunkSize
-        status = "translating"
-        updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
-    } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $progressPath -Encoding UTF8
+    function Start-TranslationJob {
+        param([Parameter(Mandatory = $true)][object] $ChunkPlan)
 
-    foreach ($chunkPlan in $chunkPlans) {
-        $startId = $chunkPlan.StartId
-        $endId = $chunkPlan.EndId
-        $enChunk = $chunkPlan.EnglishPath
-        $translatedChunk = $chunkPlan.TranslatedPath
-        $currentChunk = [array]::IndexOf($chunkPlans, $chunkPlan) + 1
+        Start-Job -ArgumentList @(
+            $ChunkPlan.EnglishPath,
+            $ChunkPlan.TranslatedPath,
+            $ChunkPlan.StartId,
+            $ChunkPlan.EndId,
+            $TargetLanguageName,
+            $ReasoningEffort,
+            $OutDir
+        ) -ScriptBlock {
+            param(
+                [string] $EnglishPath,
+                [string] $TranslatedPath,
+                [int] $StartId,
+                [int] $EndId,
+                [string] $TargetLanguageName,
+                [string] $ReasoningEffort,
+                [string] $OutDir
+            )
 
-        if (Test-Path -LiteralPath $translatedChunk) {
-            Write-Host "Translated chunk already exists: $translatedChunk"
-            continue
-        }
+            $logPath = "$TranslatedPath.log"
+            $prompt = @"
+Translate the TSV subtitle cues in $EnglishPath into $TargetLanguageName.
 
-        $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
-        @{
-            videoId = $vimeoId
-            targetLanguageCode = $TargetLanguageCode
-            targetLanguageName = $TargetLanguageName
-            sourceCueCount = $cues.Count
-            totalChunks = $chunkPlans.Count
-            completedChunks = $planProgress.CompletedChunks
-            currentChunk = $currentChunk
-            chunkSize = $ChunkSize
-            status = "translating"
-            updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
-        } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $progressPath -Encoding UTF8
-
-        $prompt = @"
-Translate the TSV subtitle cues in $enChunk into $TargetLanguageName.
-
-Write the result to $translatedChunk.
+Write the result to $TranslatedPath.
 
 Rules:
 - Output TSV lines only, same cue id then tab then $TargetLanguageName translation.
-- Preserve every cue id exactly and include all rows $startId through $endId.
+- Preserve every cue id exactly and include all rows $StartId through $EndId.
 - Translate only the English text into natural $TargetLanguageName.
 - Keep product names such as OpenAI, Codex, ChatGPT, GitHub, Slack, API, CLI, URL, HTML, CSS, JavaScript in English.
 - Keep each line concise enough for subtitles.
 - Do not add markdown or explanation.
 "@
 
-        $prompt | codex exec -C $OutDir -s danger-full-access --ignore-user-config --ignore-rules -c "model_reasoning_effort='$ReasoningEffort'" --skip-git-repo-check -
-        if ($LASTEXITCODE -ne 0) {
-            throw "Codex translation command failed for cues $startId-$endId."
+            try {
+                $prompt | codex exec -C $OutDir -s danger-full-access --ignore-user-config --ignore-rules -c "model_reasoning_effort='$ReasoningEffort'" --skip-git-repo-check - *> $logPath
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -ne 0) {
+                    return [pscustomobject]@{
+                        Success = $false
+                        StartId = $StartId
+                        EndId = $EndId
+                        ExitCode = $exitCode
+                        LogPath = $logPath
+                        Message = "Codex translation command failed for cues $StartId-$EndId."
+                    }
+                }
+
+                if (-not (Test-Path -LiteralPath $TranslatedPath)) {
+                    return [pscustomobject]@{
+                        Success = $false
+                        StartId = $StartId
+                        EndId = $EndId
+                        ExitCode = 1
+                        LogPath = $logPath
+                        Message = "Expected translated chunk was not created: $TranslatedPath"
+                    }
+                }
+
+                return [pscustomobject]@{
+                    Success = $true
+                    StartId = $StartId
+                    EndId = $EndId
+                    ExitCode = 0
+                    LogPath = $logPath
+                    Message = ""
+                }
+            } catch {
+                return [pscustomobject]@{
+                    Success = $false
+                    StartId = $StartId
+                    EndId = $EndId
+                    ExitCode = 1
+                    LogPath = $logPath
+                    Message = $_.Exception.Message
+                }
+            }
+        }
+    }
+
+    $progressPath = Join-Path $chunkDir "progress.json"
+    $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
+    Write-GenerationProgress -Path $progressPath -ChunkPlans $chunkPlans -Progress $planProgress -Status "translating"
+
+    $pendingPlans = New-Object System.Collections.Queue
+    foreach ($chunkPlan in $chunkPlans) {
+        if (Test-Path -LiteralPath $chunkPlan.TranslatedPath) {
+            Write-Host "Translated chunk already exists: $($chunkPlan.TranslatedPath)"
+            continue
+        }
+        $pendingPlans.Enqueue($chunkPlan)
+    }
+
+    $runningJobs = @{}
+    while ($pendingPlans.Count -gt 0 -or $runningJobs.Count -gt 0) {
+        while ($pendingPlans.Count -gt 0 -and $runningJobs.Count -lt $ParallelJobs) {
+            $chunkPlan = $pendingPlans.Dequeue()
+            $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
+            Write-GenerationProgress `
+                -Path $progressPath `
+                -ChunkPlans $chunkPlans `
+                -Progress $planProgress `
+                -Status "translating" `
+                -CurrentChunk $chunkPlan.Index
+            Write-Host "Starting translation chunk $($chunkPlan.Index) of $($chunkPlans.Count): $($chunkPlan.StartId)-$($chunkPlan.EndId)"
+            $job = Start-TranslationJob -ChunkPlan $chunkPlan
+            $runningJobs[[string]$job.Id] = [pscustomobject]@{
+                Job = $job
+                ChunkPlan = $chunkPlan
+            }
         }
 
-        if (-not (Test-Path -LiteralPath $translatedChunk)) {
-            throw "Expected translated chunk was not created: $translatedChunk"
+        if ($runningJobs.Count -eq 0) {
+            continue
         }
 
-        $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
-        @{
-            videoId = $vimeoId
-            targetLanguageCode = $TargetLanguageCode
-            targetLanguageName = $TargetLanguageName
-            sourceCueCount = $cues.Count
-            totalChunks = $chunkPlans.Count
-            completedChunks = $planProgress.CompletedChunks
-            currentChunk = $planProgress.CurrentChunk
-            chunkSize = $ChunkSize
-            status = "translating"
-            updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
-        } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $progressPath -Encoding UTF8
+        $activeJobs = @($runningJobs.Values | ForEach-Object { $_.Job })
+        $completedJobs = @(Wait-Job -Job $activeJobs -Any)
+        foreach ($completedJob in $completedJobs) {
+            $entry = $runningJobs[[string]$completedJob.Id]
+            $result = Receive-Job -Job $completedJob |
+                Where-Object { $_ -and $_.PSObject.Properties["Success"] } |
+                Select-Object -Last 1
+            Remove-Job -Job $completedJob -Force
+            $runningJobs.Remove([string]$completedJob.Id)
+
+            if (-not $result -or -not $result.Success) {
+                $message = if ($result) { $result.Message } else { "Translation job failed without a result." }
+                if ($result -and $result.LogPath -and (Test-Path -LiteralPath $result.LogPath)) {
+                    $logTail = (Get-Content -LiteralPath $result.LogPath -Tail 20 -ErrorAction SilentlyContinue) -join "`n"
+                    if (-not [string]::IsNullOrWhiteSpace($logTail)) {
+                        $message = "$message`n$logTail"
+                    }
+                }
+                foreach ($remainingJob in @($runningJobs.Values | ForEach-Object { $_.Job })) {
+                    Stop-Job -Job $remainingJob -ErrorAction SilentlyContinue
+                    Remove-Job -Job $remainingJob -Force -ErrorAction SilentlyContinue
+                }
+                throw $message
+            }
+
+            Write-Host "Completed translation chunk $($entry.ChunkPlan.Index) of $($chunkPlans.Count): $($entry.ChunkPlan.StartId)-$($entry.ChunkPlan.EndId)"
+            $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
+            Write-GenerationProgress -Path $progressPath -ChunkPlans $chunkPlans -Progress $planProgress -Status "translating"
+        }
     }
 
     $translations = @{}
@@ -350,6 +452,7 @@ Rules:
         totalChunks = $chunkPlans.Count
         completedChunks = $chunkPlans.Count
         chunkSize = $ChunkSize
+        parallelJobs = $ParallelJobs
         status = "completed"
         updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
     } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $progressPath -Encoding UTF8

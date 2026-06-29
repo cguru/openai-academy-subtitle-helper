@@ -12,7 +12,7 @@ OpenAI Academy 영상을 영어가 아닌 언어로 더 편하게 보기 위한 
 - 이미 생성된 번역 자막이 로컬 캐시에 있으면 자동으로 불러옵니다.
 - 자막이 없으면 Codex CLI를 사용해 로컬에서 번역 자막을 생성합니다.
 - 생성된 번역 자막을 Academy 영상 플레이어 위에 직접 표시합니다.
-- 자막 생성 취소와 이어하기, 진행률 표시, 추론 강도 선택, 자막 크기와 위치 조정을 지원합니다.
+- 병렬 생성, 자막 생성 취소와 이어하기, 진행률 표시, 추론 강도 선택, 자막 크기와 위치 조정을 지원합니다.
 
 이 도구는 영상 파일을 다운로드하지 않습니다. 이 저장소에는 Academy 콘텐츠, 원본 자막, 번역 자막, 자막 조각, 추출된 텍스트가 포함되어 있지 않습니다.
 
@@ -89,12 +89,14 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 다른 언어로 생성하려면 PowerShell 스크립트를 직접 실행하면서 `-TargetLanguageCode`와 `-TargetLanguageName`을 지정합니다.
+자막 생성은 기본적으로 번역 청크 3개를 병렬로 처리합니다. 직접 조절하려면 `-ParallelJobs 1`부터 `-ParallelJobs 5`까지 지정할 수 있습니다.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\oash.ps1 `
   -Url "https://academy.openai.com/home/videos/..." `
   -OutDir subtitles `
   -TranslateWithCodex `
+  -ParallelJobs 3 `
   -TargetLanguageCode ja `
   -TargetLanguageName Japanese
 ```

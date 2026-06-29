@@ -5,6 +5,7 @@ import { DEFAULT_SUBTITLE_STYLE, normalizeSubtitleStyle } from "./subtitle-style
 const statusElement = document.querySelector("#status");
 const targetLanguageElement = document.querySelector("#target-language");
 const reasoningEffortElement = document.querySelector("#reasoning-effort");
+const parallelJobsElement = document.querySelector("#parallel-jobs");
 const fontSizeElement = document.querySelector("#font-size");
 const fontSizeValueElement = document.querySelector("#font-size-value");
 const bottomOffsetElement = document.querySelector("#bottom-offset");
@@ -49,6 +50,9 @@ targetLanguageElement.addEventListener("change", async () => {
 reasoningEffortElement.addEventListener("change", async () => {
   await chrome.storage.local.set({ reasoningEffort: reasoningEffortElement.value });
 });
+parallelJobsElement.addEventListener("change", async () => {
+  await chrome.storage.local.set({ parallelJobs: parallelJobsElement.value });
+});
 [
   fontSizeElement,
   bottomOffsetElement,
@@ -62,6 +66,7 @@ init();
 async function init() {
   const stored = await chrome.storage.local.get([
     "currentGeneration",
+    "parallelJobs",
     "reasoningEffort",
     "subtitleStyle",
     "subtitlesEnabled",
@@ -71,6 +76,7 @@ async function init() {
   subtitlesEnabled = stored.subtitlesEnabled !== false;
   targetLanguageElement.value = stored.targetLanguage ?? "ko";
   reasoningEffortElement.value = stored.reasoningEffort ?? "medium";
+  parallelJobsElement.value = stored.parallelJobs ?? "3";
   subtitleStyle = normalizeSubtitleStyle(stored.subtitleStyle);
   renderSubtitleStyleControls();
   renderSubtitleToggle();
@@ -237,6 +243,7 @@ async function generateSubtitle() {
     const targetLanguageCode = targetLanguageElement.value;
     const targetLanguageName = languageNames[targetLanguageCode] ?? targetLanguageCode;
     const reasoningEffort = reasoningEffortElement.value;
+    const parallelJobs = Number.parseInt(parallelJobsElement.value, 10);
     const isResume = generateButton.dataset.mode === "resume";
 
     setGenerateNeedsAttention(false);
@@ -253,6 +260,7 @@ async function generateSubtitle() {
         targetLanguageCode,
         targetLanguageName,
         reasoningEffort,
+        parallelJobs,
       },
     });
 
@@ -274,6 +282,7 @@ async function generateSubtitle() {
       targetLanguageCode,
       targetLanguageName,
       reasoningEffort,
+      parallelJobs,
       status: "running",
     };
     await saveCurrentGeneration();
@@ -467,6 +476,7 @@ function setRunningControls(isRunning) {
   generateButton.disabled = isRunning;
   cancelButton.disabled = !isRunning;
   reasoningEffortElement.disabled = isRunning;
+  parallelJobsElement.disabled = isRunning;
   progressPanel.dataset.running = isRunning ? "true" : "false";
   if (isRunning) {
     startProgressClock();
@@ -488,6 +498,7 @@ function updateGenerationControls() {
   generateButton.disabled = isRunning;
   cancelButton.disabled = !isRunning;
   reasoningEffortElement.disabled = isRunning;
+  parallelJobsElement.disabled = isRunning;
   generateButton.textContent = isRunning ? "Generating" : canResume ? "Resume" : "Generate";
   generateButton.dataset.mode = canResume ? "resume" : "generate";
 }

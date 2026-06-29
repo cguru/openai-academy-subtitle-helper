@@ -47,12 +47,14 @@ export async function handleMessage(message, context = {}) {
       const targetLanguageCode = message.targetLanguageCode || "ko";
       const targetLanguageName = message.targetLanguageName || "Korean";
       const reasoningEffort = message.reasoningEffort || "medium";
+      const parallelJobs = message.parallelJobs || 3;
       const command = buildGeneratorCommand({
         scriptPath: generatorScriptPath,
         academyUrl: message.pageUrl,
         outDir: cacheDir,
         targetLanguageCode,
         targetLanguageName,
+        parallelJobs,
         reasoningEffort,
       });
       const jobId = createJobId(targetLanguageCode);

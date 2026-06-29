@@ -55,6 +55,7 @@ test("starts the generator for generateSubtitle requests", async () => {
       targetLanguageCode: "ko",
       targetLanguageName: "Korean",
       reasoningEffort: "low",
+      parallelJobs: 5,
     },
     {
       cacheDir: "C:\\cache",
@@ -78,6 +79,10 @@ test("starts the generator for generateSubtitle requests", async () => {
   assert.deepEqual(
     calls[0].args.slice(calls[0].args.indexOf("-ReasoningEffort"), calls[0].args.indexOf("-ReasoningEffort") + 2),
     ["-ReasoningEffort", "low"],
+  );
+  assert.deepEqual(
+    calls[0].args.slice(calls[0].args.indexOf("-ParallelJobs"), calls[0].args.indexOf("-ParallelJobs") + 2),
+    ["-ParallelJobs", "5"],
   );
 });
 

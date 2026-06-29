@@ -8,6 +8,7 @@ export function buildGeneratorCommand({
   targetLanguageCode,
   targetLanguageName,
   chunkSize = 25,
+  parallelJobs = 3,
   reasoningEffort = "medium",
 }) {
   return {
@@ -29,6 +30,8 @@ export function buildGeneratorCommand({
       targetLanguageName,
       "-ChunkSize",
       String(chunkSize),
+      "-ParallelJobs",
+      String(parallelJobs),
       "-ReasoningEffort",
       reasoningEffort,
       "-CacheNameByVideoId",

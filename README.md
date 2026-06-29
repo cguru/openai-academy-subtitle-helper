@@ -12,7 +12,7 @@ This is an unofficial community project. It is not affiliated with, endorsed by,
 - Loads translated subtitles from a local cache when available.
 - Generates translated subtitles locally through the Codex CLI when subtitles are missing.
 - Displays translated subtitles directly over the Academy video player.
-- Supports target language selection, reasoning effort, cancel/resume, progress display, subtitle styling, and Y-position adjustment.
+- Supports target language selection, reasoning effort, parallel generation, cancel/resume, progress display, subtitle styling, and Y-position adjustment.
 
 Supported target languages in the extension:
 
@@ -81,6 +81,7 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 For other target languages, use `scripts\oash.ps1` directly with `-TargetLanguageCode` and `-TargetLanguageName`.
+The generator runs 3 translation chunks in parallel by default. Use `-ParallelJobs 1` through `-ParallelJobs 5` to tune it.
 
 ## Content And Subtitle Files
 

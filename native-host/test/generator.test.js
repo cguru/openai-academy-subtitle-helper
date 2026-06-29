@@ -33,10 +33,28 @@ test("builds a PowerShell command for Academy subtitle generation", () => {
     "Korean",
     "-ChunkSize",
     "25",
+    "-ParallelJobs",
+    "3",
     "-ReasoningEffort",
     "high",
     "-CacheNameByVideoId",
   ]);
+});
+
+test("passes a custom parallel job count to the generator", () => {
+  const command = buildGeneratorCommand({
+    scriptPath: "C:\\tool\\oash.ps1",
+    academyUrl: "https://academy.openai.com/home/videos/example",
+    outDir: "C:\\cache",
+    targetLanguageCode: "ko",
+    targetLanguageName: "Korean",
+    parallelJobs: 5,
+  });
+
+  assert.deepEqual(
+    command.args.slice(command.args.indexOf("-ParallelJobs"), command.args.indexOf("-ParallelJobs") + 2),
+    ["-ParallelJobs", "5"],
+  );
 });
 
 test("defaults subtitle generation reasoning effort to medium", () => {
@@ -220,4 +238,12 @@ test("runs nested Codex translation without the Windows workspace sandbox", asyn
     script,
     /codex exec -C \$OutDir -s danger-full-access --ignore-user-config --ignore-rules -c "model_reasoning_effort='\$ReasoningEffort'" --skip-git-repo-check -/,
   );
+});
+
+test("supports bounded parallel translation jobs in the PowerShell generator", async () => {
+  const script = await readFile("../scripts/oash.ps1", "utf8");
+
+  assert.match(script, /\[ValidateRange\(1,\s*5\)\]\s*\[int\]\s*\$ParallelJobs\s*=\s*3/);
+  assert.match(script, /Start-TranslationJob/);
+  assert.match(script, /while \(\$pendingPlans\.Count -gt 0 -or \$runningJobs\.Count -gt 0\)/);
 });
