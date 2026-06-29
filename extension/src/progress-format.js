@@ -1,65 +1,88 @@
+import { getTranslator } from "./i18n.js";
+
 export function formatProgressLabel(progress, options = {}) {
+  const t = options.t ?? getTranslator("en");
   if (!progress) {
-    return "Preparing...";
+    return t("preparing");
   }
 
   const referenceTime = options.now ?? (progress.checkedAt ? new Date(progress.checkedAt) : null);
   const parts = [];
   if (progress.totalChunks > 0) {
     parts.push(
-      `${progress.completedChunks} / ${progress.totalChunks} chunks (${progress.percent}%)`,
+      t("progressChunks", {
+        completed: progress.completedChunks,
+        total: progress.totalChunks,
+        percent: progress.percent,
+      }),
     );
   } else {
-    parts.push("Preparing chunks...");
+    parts.push(t("progressPreparing"));
   }
 
-  const elapsed = formatDurationBetween(progress.startedAt, referenceTime);
+  const elapsed = formatDurationBetween(progress.startedAt, referenceTime, t);
   if (elapsed) {
-    parts.push(`elapsed ${elapsed}`);
+    parts.push(t("progressElapsed", { duration: elapsed }));
   }
 
-  const lastProgress = formatDurationBetween(progress.updatedAt, referenceTime);
+  const lastProgress = formatDurationBetween(progress.updatedAt, referenceTime, t);
   if (lastProgress) {
-    parts.push(`last progress ${lastProgress} ago`);
+    parts.push(t("progressLastProgress", { duration: lastProgress }));
   }
 
   if (progress.checkedAt) {
     const checkedAgeSeconds = secondsBetween(progress.checkedAt, referenceTime);
-    parts.push(checkedAgeSeconds === 0 ? "checked just now" : `checked ${formatDuration(checkedAgeSeconds)} ago`);
+    parts.push(
+      checkedAgeSeconds === 0
+        ? t("progressCheckedJustNow")
+        : t("progressCheckedAgo", { duration: formatDuration(checkedAgeSeconds, t) }),
+    );
 
     if (options.pollIntervalMs) {
       const remainingSeconds = Math.max(
         0,
         Math.ceil((options.pollIntervalMs - checkedAgeSeconds * 1000) / 1000),
       );
-      parts.push(remainingSeconds === 0 ? "next check now" : `next check in ${formatDuration(remainingSeconds)}`);
+      parts.push(
+        remainingSeconds === 0
+          ? t("progressNextCheckNow")
+          : t("progressNextCheckIn", { duration: formatDuration(remainingSeconds, t) }),
+      );
     }
   }
 
   return parts.join(" | ");
 }
 
-export function formatProgressStatus(generation) {
+export function formatProgressStatus(generation, options = {}) {
+  const t = options.t ?? getTranslator("en");
   const name = generation.targetLanguageName ?? generation.targetLanguageCode;
   const progress = generation.progress;
   if (!progress || progress.totalChunks === 0) {
-    return `Generating ${name} subtitles...\nPreparing source subtitles and chunks.`;
+    return `${t("generatingSubtitles", { name })}\n${t("preparingSource")}`;
   }
 
   if (progress.currentChunk) {
-    return `Generating ${name} subtitles...\nWorking on chunk ${progress.currentChunk} of ${progress.totalChunks}. ${progress.completedChunks} chunks completed.`;
+    return `${t("generatingSubtitles", { name })}\n${t("workingOnChunk", {
+      current: progress.currentChunk,
+      total: progress.totalChunks,
+      completed: progress.completedChunks,
+    })}`;
   }
 
-  return `Generating ${name} subtitles...\n${progress.completedChunks} of ${progress.totalChunks} chunks translated.`;
+  return `${t("generatingSubtitles", { name })}\n${t("translatedChunks", {
+    completed: progress.completedChunks,
+    total: progress.totalChunks,
+  })}`;
 }
 
-function formatDurationBetween(startValue, endValue) {
+function formatDurationBetween(startValue, endValue, t) {
   if (!startValue || !endValue) {
     return null;
   }
 
   const seconds = secondsBetween(startValue, endValue);
-  return seconds === null ? null : formatDuration(seconds);
+  return seconds === null ? null : formatDuration(seconds, t);
 }
 
 function secondsBetween(startValue, endValue) {
@@ -72,13 +95,13 @@ function secondsBetween(startValue, endValue) {
   return Math.round((end - start) / 1000);
 }
 
-function formatDuration(totalSeconds) {
+function formatDuration(totalSeconds, t) {
   const seconds = Math.max(0, totalSeconds);
   const minutes = Math.floor(seconds / 60);
   const remainderSeconds = seconds % 60;
   if (minutes === 0) {
-    return `${remainderSeconds}s`;
+    return t("progressSeconds", { seconds: remainderSeconds });
   }
 
-  return `${minutes}m ${remainderSeconds}s`;
+  return t("progressMinutesSeconds", { minutes, seconds: remainderSeconds });
 }

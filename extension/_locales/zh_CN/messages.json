@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "OpenAI Academy Subtitle Helper"
+  },
+  "extensionDescription": {
+    "message": "用于 OpenAI Academy 视频的本地字幕查看和翻译助手。"
+  }
+}

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { getTranslator } from "../src/i18n.js";
 import { formatProgressLabel, formatProgressStatus } from "../src/progress-format.js";
 
 test("formats running progress with elapsed and last progress timing", () => {
@@ -56,5 +57,18 @@ test("formats running status with current chunk context", () => {
       progress: { totalChunks: 10, completedChunks: 3, currentChunk: 4 },
     }),
     "Generating Korean subtitles...\nWorking on chunk 4 of 10. 3 chunks completed.",
+  );
+});
+
+test("formats running status with localized messages", () => {
+  assert.equal(
+    formatProgressStatus(
+      {
+        targetLanguageName: "한국어",
+        progress: { totalChunks: 10, completedChunks: 3, currentChunk: 4 },
+      },
+      { t: getTranslator("ko") },
+    ),
+    "한국어 자막 생성 중...\n10개 중 4번째 조각 작업 중입니다. 3개 조각 완료.",
   );
 });

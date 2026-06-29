@@ -6,44 +6,57 @@
   </head>
   <body>
     <main>
-      <h1>OpenAI Academy Subtitle Helper</h1>
+      <h1 data-i18n="appName">OpenAI Academy Subtitle Helper</h1>
       <div class="row">
-        <button id="generate" type="button">Generate</button>
-        <button id="cancel" type="button" disabled>Cancel</button>
+        <button id="generate" type="button" data-i18n="generate">Generate</button>
+        <button id="cancel" type="button" disabled data-i18n="cancel">Cancel</button>
       </div>
       <div class="row">
         <button id="toggle-subtitles" type="button">Subtitles On</button>
       </div>
       <div id="progress-panel" hidden>
         <progress id="progress" max="100" value="0"></progress>
-        <div id="progress-label">Preparing...</div>
+        <div id="progress-label" data-i18n="preparing">Preparing...</div>
       </div>
-      <div id="status">Open an OpenAI Academy video page.</div>
+      <div id="status" data-i18n="openAcademyPage">Open an OpenAI Academy video page.</div>
       <div class="utility-row">
-        <button id="load" type="button">Reload subtitles</button>
+        <button id="load" type="button" data-i18n="reloadSubtitles">Reload subtitles</button>
       </div>
       <label>
-        Target language
+        <span data-i18n="uiLanguage">UI language</span>
+        <select id="ui-language">
+          <option value="auto" data-i18n="uiLanguageAuto">Auto</option>
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
+          <option value="ja">日本語</option>
+          <option value="zh-Hans">简体中文</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </label>
+      <label>
+        <span data-i18n="targetLanguage">Target language</span>
         <select id="target-language">
-          <option value="ko">Korean</option>
-          <option value="ja">Japanese</option>
-          <option value="zh-Hans">Chinese Simplified</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
+          <option value="ko" data-i18n="languageKorean">Korean</option>
+          <option value="ja" data-i18n="languageJapanese">Japanese</option>
+          <option value="zh-Hans" data-i18n="languageChineseSimplified">Chinese Simplified</option>
+          <option value="es" data-i18n="languageSpanish">Spanish</option>
+          <option value="fr" data-i18n="languageFrench">French</option>
+          <option value="de" data-i18n="languageGerman">German</option>
         </select>
       </label>
       <label>
-        Reasoning effort
+        <span data-i18n="reasoningEffort">Reasoning effort</span>
         <select id="reasoning-effort">
-          <option value="low">Low</option>
-          <option value="medium" selected>Medium</option>
-          <option value="high">High</option>
-          <option value="xhigh">Extra high</option>
+          <option value="low" data-i18n="low">Low</option>
+          <option value="medium" selected data-i18n="medium">Medium</option>
+          <option value="high" data-i18n="high">High</option>
+          <option value="xhigh" data-i18n="xhigh">Extra high</option>
         </select>
       </label>
       <label>
-        Parallel jobs
+        <span data-i18n="parallelJobs">Parallel jobs</span>
         <select id="parallel-jobs">
           <option value="1">1</option>
           <option value="2">2</option>
@@ -52,32 +65,32 @@
         </select>
       </label>
       <fieldset class="style-settings">
-        <legend>Subtitle style</legend>
+        <legend data-i18n="subtitleStyle">Subtitle style</legend>
         <label>
-          Font size <output id="font-size-value" for="font-size">24px</output>
+          <span data-i18n="fontSize">Font size</span> <output id="font-size-value" for="font-size">24px</output>
           <input id="font-size" type="range" min="16" max="48" step="1" value="24">
         </label>
         <label>
-          Y position <output id="bottom-offset-value" for="bottom-offset">96px</output>
+          <span data-i18n="yPosition">Y position</span> <output id="bottom-offset-value" for="bottom-offset">96px</output>
           <input id="bottom-offset" type="range" min="24" max="180" step="4" value="96">
         </label>
         <div class="color-row">
           <label>
-            Text
+            <span data-i18n="text">Text</span>
             <input id="subtitle-color" type="color" value="#ffffff">
           </label>
           <label>
-            Background
+            <span data-i18n="background">Background</span>
             <input id="background-color" type="color" value="#000000">
           </label>
         </div>
         <label>
-          Background opacity <output id="background-opacity-value" for="background-opacity">72%</output>
+          <span data-i18n="backgroundOpacity">Background opacity</span> <output id="background-opacity-value" for="background-opacity">72%</output>
           <input id="background-opacity" type="range" min="0" max="1" step="0.05" value="0.72">
         </label>
         <label class="checkbox-row">
           <input id="subtitle-bold" type="checkbox">
-          Bold
+          <span data-i18n="bold">Bold</span>
         </label>
       </fieldset>
     </main>

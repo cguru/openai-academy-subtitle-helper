@@ -1,8 +1,14 @@
 import { sendRuntimeMessage } from "./messaging.js";
 import { formatProgressLabel, formatProgressStatus } from "./progress-format.js";
+import {
+  getDefaultTargetLanguage,
+  getMessage,
+  resolveUiLanguage,
+} from "./i18n.js";
 import { DEFAULT_SUBTITLE_STYLE, normalizeSubtitleStyle } from "./subtitle-style.js";
 
 const statusElement = document.querySelector("#status");
+const uiLanguageElement = document.querySelector("#ui-language");
 const targetLanguageElement = document.querySelector("#target-language");
 const reasoningEffortElement = document.querySelector("#reasoning-effort");
 const parallelJobsElement = document.querySelector("#parallel-jobs");
@@ -21,13 +27,13 @@ const toggleSubtitlesButton = document.querySelector("#toggle-subtitles");
 const progressPanel = document.querySelector("#progress-panel");
 const progressElement = document.querySelector("#progress");
 const progressLabel = document.querySelector("#progress-label");
-const languageNames = {
-  ko: "Korean",
-  ja: "Japanese",
-  "zh-Hans": "Chinese Simplified",
-  es: "Spanish",
-  fr: "French",
-  de: "German",
+const targetLanguageLabelKeys = {
+  ko: "languageKorean",
+  ja: "languageJapanese",
+  "zh-Hans": "languageChineseSimplified",
+  es: "languageSpanish",
+  fr: "languageFrench",
+  de: "languageGerman",
 };
 const PROGRESS_POLL_INTERVAL_MS = 2000;
 
@@ -36,11 +42,27 @@ let pollTimer = null;
 let progressClockTimer = null;
 let subtitleStyle = DEFAULT_SUBTITLE_STYLE;
 let subtitlesEnabled = true;
+let uiLanguage = "en";
 
 document.querySelector("#load").addEventListener("click", loadCachedSubtitle);
 generateButton.addEventListener("click", generateSubtitle);
 cancelButton.addEventListener("click", cancelGeneration);
 toggleSubtitlesButton.addEventListener("click", toggleSubtitles);
+uiLanguageElement.addEventListener("change", async () => {
+  await chrome.storage.local.set({ uiLanguage: uiLanguageElement.value });
+  uiLanguage = resolveUiLanguage({
+    storedLanguage: uiLanguageElement.value,
+    browserLanguage: getBrowserUiLanguage(),
+    navigatorLanguage: navigator.language,
+  });
+  applyLocalization();
+  renderSubtitleToggle();
+  updateGenerationControls();
+  setProgress(currentGeneration?.progress ?? null);
+  if (currentGeneration?.status === "running") {
+    setStatus(formatProgressStatus(currentGeneration, { t }));
+  }
+});
 targetLanguageElement.addEventListener("change", async () => {
   await chrome.storage.local.set({ targetLanguage: targetLanguageElement.value });
   if (subtitlesEnabled) {
@@ -71,13 +93,25 @@ async function init() {
     "subtitleStyle",
     "subtitlesEnabled",
     "targetLanguage",
+    "uiLanguage",
   ]);
+  const storedUiLanguage = stored.uiLanguage ?? "auto";
+  uiLanguageElement.value = isSelectableUiLanguage(storedUiLanguage) ? storedUiLanguage : "auto";
+  uiLanguage = resolveUiLanguage({
+    storedLanguage: uiLanguageElement.value,
+    browserLanguage: getBrowserUiLanguage(),
+    navigatorLanguage: navigator.language,
+  });
   currentGeneration = stored.currentGeneration ?? null;
   subtitlesEnabled = stored.subtitlesEnabled !== false;
-  targetLanguageElement.value = stored.targetLanguage ?? "ko";
+  targetLanguageElement.value = stored.targetLanguage ?? getDefaultTargetLanguage(uiLanguage);
   reasoningEffortElement.value = stored.reasoningEffort ?? "medium";
   parallelJobsElement.value = stored.parallelJobs ?? "3";
   subtitleStyle = normalizeSubtitleStyle(stored.subtitleStyle);
+  if (!stored.targetLanguage) {
+    await chrome.storage.local.set({ targetLanguage: targetLanguageElement.value });
+  }
+  applyLocalization();
   renderSubtitleStyleControls();
   renderSubtitleToggle();
   updateGenerationControls();
@@ -101,9 +135,10 @@ async function loadCachedSubtitle(options = {}) {
       : await detectCurrentVideo();
     if (!detected) return;
 
-    setStatus(`Looking for cached subtitles for ${detected.videoId}...`);
+    setStatus(t("lookingForCachedSubtitles", { videoId: detected.videoId }));
 
     const targetLanguageCode = targetLanguageElement.value;
+    const targetLanguageName = getTargetLanguageName(targetLanguageCode);
     const response = await sendRuntimeMessage({
       target: "native-host",
       payload: {
@@ -115,7 +150,7 @@ async function loadCachedSubtitle(options = {}) {
 
     if (response?.type === "subtitleMissing") {
       setGenerateNeedsAttention(true);
-      setStatus(`No cached ${targetLanguageCode} subtitles found for ${detected.videoId}.`);
+      setStatus(t("noCachedSubtitlesForVideo", { language: targetLanguageName, videoId: detected.videoId }));
       return;
     }
 
@@ -134,11 +169,11 @@ async function loadCachedSubtitle(options = {}) {
       },
     });
     if (!shown?.ok) {
-      setStatus(shown?.message ?? "Could not show subtitles on the video frame.");
+      setStatus(shown?.message ?? t("couldNotShowSubtitles"));
       return;
     }
     setGenerateNeedsAttention(false);
-    setStatus(`Loaded ${response.cues.length} cues from local cache.`);
+    setStatus(t("loadedCues", { count: response.cues.length }));
   } catch (error) {
     setStatus(error.message);
   }
@@ -168,7 +203,7 @@ async function checkCachedSubtitleAvailability() {
 
     if (response?.type === "subtitleMissing") {
       setGenerateNeedsAttention(true);
-      setStatus(`No cached ${targetLanguageCode} subtitles found. Generate to create them.`);
+      setStatus(t("noCachedSubtitlesGenerate", { language: getTargetLanguageName(targetLanguageCode) }));
       return;
     }
 
@@ -199,11 +234,11 @@ async function setSubtitlesEnabled(enabled, options = {}) {
     } catch {
       // The preference is still saved; a video frame may not be open yet.
     }
-    setStatus("Translated subtitles disabled.");
+    setStatus(t("translatedSubtitlesDisabled"));
     return;
   }
 
-  setStatus("Translated subtitles enabled.");
+  setStatus(t("translatedSubtitlesEnabled"));
   if (loadAfterEnable) {
     await loadCachedSubtitle();
   }
@@ -241,14 +276,16 @@ async function generateSubtitle() {
     if (!detected) return;
 
     const targetLanguageCode = targetLanguageElement.value;
-    const targetLanguageName = languageNames[targetLanguageCode] ?? targetLanguageCode;
+    const targetLanguageName = getTargetLanguageName(targetLanguageCode);
     const reasoningEffort = reasoningEffortElement.value;
     const parallelJobs = Number.parseInt(parallelJobsElement.value, 10);
     const isResume = generateButton.dataset.mode === "resume";
 
     setGenerateNeedsAttention(false);
     setProgress({ totalChunks: 0, completedChunks: 0, percent: 0 });
-    setStatus(`${isResume ? "Resuming" : "Generating"} ${targetLanguageName} subtitles...`);
+    setStatus(
+      t(isResume ? "resumingSubtitles" : "generatingSubtitles", { name: targetLanguageName }),
+    );
     setRunningControls(true);
 
     const response = await sendRuntimeMessage({
@@ -271,7 +308,7 @@ async function generateSubtitle() {
     }
 
     if (response?.type !== "generationStarted") {
-      setStatus(`Unexpected generator response: ${JSON.stringify(response)}`);
+      setStatus(t("unexpectedGeneratorResponse", { response: JSON.stringify(response) }));
       setRunningControls(false);
       return;
     }
@@ -299,7 +336,7 @@ async function cancelGeneration() {
   }
 
   cancelButton.disabled = true;
-  setStatus("Cancelling generation...");
+  setStatus(t("cancellingGeneration"));
 
   const response = await sendRuntimeMessage({
     target: "native-host",
@@ -356,7 +393,7 @@ async function handleGenerationStatus(response, { loadOnComplete }) {
   setProgress(currentGeneration.progress);
 
   if (response.status === "running") {
-    setStatus(formatProgressStatus(currentGeneration));
+    setStatus(formatProgressStatus(currentGeneration, { t }));
     setRunningControls(true);
     pollTimer = setTimeout(() => pollGenerationStatus({ loadOnComplete }), PROGRESS_POLL_INTERVAL_MS);
     await saveCurrentGeneration();
@@ -365,7 +402,7 @@ async function handleGenerationStatus(response, { loadOnComplete }) {
 
   if (response.status === "completed") {
     const completedGeneration = currentGeneration;
-    setStatus("Generation completed. Loading cached subtitles...");
+    setStatus(t("generationCompletedLoading"));
     setRunningControls(false);
     await chrome.storage.local.remove("currentGeneration");
     currentGeneration = null;
@@ -378,7 +415,7 @@ async function handleGenerationStatus(response, { loadOnComplete }) {
 
   if (response.status === "cancelled") {
     currentGeneration.jobId = null;
-    setStatus("Generation cancelled. Use Resume to continue from saved chunks.");
+    setStatus(t("generationCancelledResume"));
     setRunningControls(false);
     await saveCurrentGeneration();
     return;
@@ -387,13 +424,13 @@ async function handleGenerationStatus(response, { loadOnComplete }) {
   if (response.status === "failed") {
     currentGeneration.jobId = null;
     setGenerateNeedsAttention(true);
-    setStatus(`${response.message ?? "Generation failed."}\nUse Resume to continue from saved chunks.`);
+    setStatus(t("generationFailedResume", { message: response.message ?? t("generationFailed") }));
     setRunningControls(false);
     await saveCurrentGeneration();
     return;
   }
 
-  setStatus("No active generation job. Use Resume if chunks were already created.");
+  setStatus(t("noActiveGenerationResume"));
   setRunningControls(false);
   await saveCurrentGeneration();
 }
@@ -406,19 +443,19 @@ async function detectCurrentVideo(options = {}) {
       payload: { type: "detectVideo" },
     },
     {
-      timeoutMessage: "Video frame did not answer. Reload the Academy page and try again.",
+      timeoutMessage: t("videoFrameTimeout"),
     },
   );
   if (!detected?.found) {
     if (!quiet) {
-      setStatus(detected?.message ?? "No video found on this Academy page.");
+      setStatus(detected?.message ?? t("noVideoFound"));
     }
     return null;
   }
 
   if (!detected.videoId) {
     if (!quiet) {
-      setStatus("Could not detect an Academy/Vimeo video id.");
+      setStatus(t("couldNotDetectVideo"));
     }
     return null;
   }
@@ -469,6 +506,7 @@ function renderProgressClock() {
   progressLabel.textContent = formatProgressLabel(currentGeneration.progress, {
     now: new Date(),
     pollIntervalMs: PROGRESS_POLL_INTERVAL_MS,
+    t,
   });
 }
 
@@ -480,7 +518,7 @@ function setRunningControls(isRunning) {
   progressPanel.dataset.running = isRunning ? "true" : "false";
   if (isRunning) {
     startProgressClock();
-    generateButton.textContent = "Generating";
+    generateButton.textContent = t("generating");
     return;
   }
 
@@ -499,7 +537,11 @@ function updateGenerationControls() {
   cancelButton.disabled = !isRunning;
   reasoningEffortElement.disabled = isRunning;
   parallelJobsElement.disabled = isRunning;
-  generateButton.textContent = isRunning ? "Generating" : canResume ? "Resume" : "Generate";
+  generateButton.textContent = isRunning
+    ? t("generating")
+    : canResume
+      ? t("resume")
+      : t("generate");
   generateButton.dataset.mode = canResume ? "resume" : "generate";
 }
 
@@ -520,7 +562,7 @@ function renderSubtitleStyleControls() {
 }
 
 function renderSubtitleToggle() {
-  toggleSubtitlesButton.textContent = subtitlesEnabled ? "Subtitles On" : "Subtitles Off";
+  toggleSubtitlesButton.textContent = subtitlesEnabled ? t("subtitlesOn") : t("subtitlesOff");
   toggleSubtitlesButton.dataset.enabled = subtitlesEnabled ? "true" : "false";
 }
 
@@ -535,9 +577,33 @@ function setProgress(progress) {
   progressLabel.textContent = formatProgressLabel(progress, {
     now: new Date(),
     pollIntervalMs: PROGRESS_POLL_INTERVAL_MS,
+    t,
   });
 }
 
 function setStatus(message) {
   statusElement.textContent = message;
+}
+
+function applyLocalization() {
+  document.documentElement.lang = uiLanguage;
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    element.textContent = t(element.dataset.i18n);
+  });
+}
+
+function t(key, params) {
+  return getMessage(uiLanguage, key, params);
+}
+
+function getBrowserUiLanguage() {
+  return chrome.i18n?.getUILanguage?.() ?? null;
+}
+
+function getTargetLanguageName(languageCode) {
+  return t(targetLanguageLabelKeys[languageCode] ?? languageCode);
+}
+
+function isSelectableUiLanguage(languageCode) {
+  return ["auto", "en", "ko", "ja", "zh-Hans", "es", "fr", "de"].includes(languageCode);
 }

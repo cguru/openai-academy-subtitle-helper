@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "OpenAI Academy Subtitle Helper"
+  },
+  "extensionDescription": {
+    "message": "Local subtitle viewer and translator helper for OpenAI Academy."
+  }
+}

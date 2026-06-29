@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "OpenAI Academy Subtitle Helper"
+  },
+  "extensionDescription": {
+    "message": "OpenAI Academy 동영상을 위한 로컬 자막 표시 및 번역 도우미입니다."
+  }
+}

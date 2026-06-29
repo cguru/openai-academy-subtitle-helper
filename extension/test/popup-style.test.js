@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const popupHtml = readFileSync(join(__dirname, "../src/popup.html"), "utf8");
 const popupJs = readFileSync(join(__dirname, "../src/popup.js"), "utf8");
 const popupCss = readFileSync(join(__dirname, "../src/popup.css"), "utf8");
+const manifest = JSON.parse(readFileSync(join(__dirname, "../manifest.json"), "utf8"));
 
 test("popup exposes subtitle style controls", () => {
   assert.match(popupHtml, /id="font-size"/);
@@ -59,4 +60,18 @@ test("popup exposes parallel job control with default three workers", () => {
   assert.match(popupHtml, /<option value="3" selected>3<\/option>/);
   assert.match(popupJs, /parallelJobs/);
   assert.match(popupJs, /parallelJobsElement\.value = stored\.parallelJobs \?\? "3"/);
+});
+
+test("popup exposes UI language control and localization hooks", () => {
+  assert.match(popupHtml, /id="ui-language"/);
+  assert.match(popupHtml, /data-i18n="generate"/);
+  assert.match(popupJs, /uiLanguage/);
+  assert.match(popupJs, /applyLocalization/);
+});
+
+test("manifest exposes extension metadata through Chrome locales", () => {
+  assert.equal(manifest.default_locale, "en");
+  assert.equal(manifest.name, "__MSG_extensionName__");
+  assert.equal(manifest.description, "__MSG_extensionDescription__");
+  assert.equal(manifest.action.default_title, "__MSG_extensionName__");
 });
