@@ -1,13 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Academy Subtitle Helper",
+  "name": "OpenAI Academy Subtitle Helper",
   "version": "0.1.0",
   "description": "Local subtitle viewer and translator helper for OpenAI Academy.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApWPHMFgwA9Pu2lMZqm1430RtkFMsQR2rQVf9mo9sEyjD5x97nqEYhvayqfxZN6KkFvN3bYFFxjJOW6SYfi+IpIVUseqpL9ByFqqjoPTaGGngdJgLsW4bp3NdwKbQdNSEMRcYOZMuhl560khMR+el3nI67zgH+nS8sgnESM3P/zcuOJ2TFlOmKa9P02dnoRJlnmWYCfExNnvkitc3XzdUhxmEUcN1AaBhv5iaXDtaVcgf9EmsddC3LoZ0Kcb0r6mcylwLFEbA8bObtua0Q7VLZ9mYRFFuqFdEg6RWJdmx+66srDjlv1xsq2RAjheaDducjfC+0SC1sSr57tgI+vifEQIDAQAB",
   "permissions": ["activeTab", "nativeMessaging", "storage", "tabs"],
   "host_permissions": ["https://academy.openai.com/*", "https://player.vimeo.com/*"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "Academy Subtitle Helper",
+    "default_title": "OpenAI Academy Subtitle Helper",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    },
     "default_popup": "src/popup.html"
   },
   "background": {
