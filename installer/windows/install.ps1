@@ -21,6 +21,18 @@ function Find-CommandPath {
     return $null
 }
 
+function Stop-RunningNativeHost {
+    $hostScriptPath = Join-Path $NativeHostRoot "src\host.js"
+    $escapedHostScriptPath = [WildcardPattern]::Escape($hostScriptPath)
+    $runningHosts = Get-CimInstance Win32_Process -Filter "name = 'node.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like "*$escapedHostScriptPath*" }
+
+    foreach ($process in $runningHosts) {
+        Write-Host "Stopping running native host process: $($process.ProcessId)"
+        Stop-Process -Id $process.ProcessId -Force
+    }
+}
+
 $nodePath = Find-CommandPath "node.exe"
 if (-not $nodePath) {
     throw "Node.js was not found in PATH. Install Node.js or use a bundled release build."
@@ -54,6 +66,8 @@ $extensionIdChars = foreach ($char in $hex.ToCharArray()) {
     [char]([int][char]'a' + [Convert]::ToInt32([string]$char, 16))
 }
 $ExtensionId = -join $extensionIdChars
+
+Stop-RunningNativeHost
 
 New-Item -ItemType Directory -Force -Path $InstallRoot, $NativeHostRoot, $ViewerRoot, $ScriptsRoot | Out-Null
 Copy-Item -Recurse -Force (Join-Path $ToolRoot "native-host\src") $NativeHostRoot

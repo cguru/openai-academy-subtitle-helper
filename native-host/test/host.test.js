@@ -75,15 +75,10 @@ test("starts the generator for generateSubtitle requests", async () => {
   assert.ok(response.jobId);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].command, "powershell.exe");
-  assert.ok(calls[0].args.includes("-CacheNameByVideoId"));
-  assert.deepEqual(
-    calls[0].args.slice(calls[0].args.indexOf("-ReasoningEffort"), calls[0].args.indexOf("-ReasoningEffort") + 2),
-    ["-ReasoningEffort", "low"],
-  );
-  assert.deepEqual(
-    calls[0].args.slice(calls[0].args.indexOf("-ParallelJobs"), calls[0].args.indexOf("-ParallelJobs") + 2),
-    ["-ParallelJobs", "5"],
-  );
+  assert.equal(calls[0].args[3], "-Command");
+  assert.match(calls[0].args[4], /-CacheNameByVideoId/);
+  assert.match(calls[0].args[4], /-ReasoningEffort 'low'/);
+  assert.match(calls[0].args[4], /-ParallelJobs '5'/);
 });
 
 test("returns generation status with chunk progress", async () => {

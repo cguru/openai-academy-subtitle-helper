@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildGeneratorCommand, readGenerationProgress } from "../src/generator.js";
+import { runCommandWithOutput } from "../src/host.js";
 
 test("builds a PowerShell command for Academy subtitle generation", () => {
   const command = buildGeneratorCommand({
@@ -16,29 +17,52 @@ test("builds a PowerShell command for Academy subtitle generation", () => {
   });
 
   assert.equal(command.command, "powershell.exe");
-  assert.deepEqual(command.args, [
-    "-NoProfile",
-    "-ExecutionPolicy",
-    "Bypass",
-    "-File",
-    "C:\\tool\\oash.ps1",
-    "-Url",
-    "https://academy.openai.com/home/videos/example",
-    "-OutDir",
-    "C:\\cache",
-    "-TranslateWithCodex",
-    "-TargetLanguageCode",
-    "ko",
-    "-TargetLanguageName",
-    "Korean",
-    "-ChunkSize",
-    "25",
-    "-ParallelJobs",
-    "3",
-    "-ReasoningEffort",
-    "high",
-    "-CacheNameByVideoId",
-  ]);
+  assert.equal(command.args[0], "-NoProfile");
+  assert.equal(command.args[1], "-ExecutionPolicy");
+  assert.equal(command.args[2], "Bypass");
+  assert.equal(command.args[3], "-Command");
+  assert.equal(command.args.length, 5);
+  assert.match(command.args[4], /& 'C:\\tool\\oash\.ps1'/);
+  assert.match(command.args[4], /-Url 'https:\/\/academy\.openai\.com\/home\/videos\/example'/);
+  assert.match(command.args[4], /-OutDir 'C:\\cache'/);
+  assert.match(command.args[4], /-TranslateWithCodex/);
+  assert.match(command.args[4], /-TargetLanguageCode 'ko'/);
+  assert.match(command.args[4], /-TargetLanguageName 'Korean'/);
+  assert.match(command.args[4], /-ChunkSize '25'/);
+  assert.match(command.args[4], /-ParallelJobs '3'/);
+  assert.match(command.args[4], /-ReasoningEffort 'high'/);
+  assert.match(command.args[4], /-CacheNameByVideoId/);
+});
+
+test("sets PowerShell output encoding before invoking the generator script", () => {
+  const command = buildGeneratorCommand({
+    scriptPath: "C:\\tool\\oash.ps1",
+    academyUrl: "https://academy.openai.com/home/videos/example",
+    outDir: "C:\\cache",
+    targetLanguageCode: "ko",
+    targetLanguageName: "Korean",
+  });
+
+  assert.match(command.args[4], /UTF8Encoding/);
+  assert.match(command.args[4], /Console\]::OutputEncoding/);
+  assert.match(command.args[4], /& 'C:\\tool\\oash\.ps1'/);
+});
+
+test("reports missing PowerShell script paths without mojibake", async () => {
+  const command = buildGeneratorCommand({
+    scriptPath: "C:\\no-such-folder\\없는스크립트.ps1",
+    academyUrl: "https://academy.openai.com/home/videos/example",
+    outDir: "C:\\cache",
+    targetLanguageCode: "ko",
+    targetLanguageName: "한국어",
+  });
+
+  const result = await runCommandWithOutput(command);
+
+  assert.equal(result.exitCode, 1);
+  assert.match(result.stderr, /없는스크립트\.ps1/);
+  assert.doesNotMatch(result.stderr, /�/);
+  assert.doesNotMatch(result.stderr, /잘못된 개체|InvalidOperation/);
 });
 
 test("passes a custom parallel job count to the generator", () => {
@@ -51,10 +75,7 @@ test("passes a custom parallel job count to the generator", () => {
     parallelJobs: 5,
   });
 
-  assert.deepEqual(
-    command.args.slice(command.args.indexOf("-ParallelJobs"), command.args.indexOf("-ParallelJobs") + 2),
-    ["-ParallelJobs", "5"],
-  );
+  assert.match(command.args[4], /-ParallelJobs '5'/);
 });
 
 test("defaults subtitle generation reasoning effort to medium", () => {
@@ -66,13 +87,7 @@ test("defaults subtitle generation reasoning effort to medium", () => {
     targetLanguageName: "Korean",
   });
 
-  assert.deepEqual(
-    command.args.slice(
-      command.args.indexOf("-ReasoningEffort"),
-      command.args.indexOf("-ReasoningEffort") + 2,
-    ),
-    ["-ReasoningEffort", "medium"],
-  );
+  assert.match(command.args[4], /-ReasoningEffort 'medium'/);
 });
 
 test("uses a planned total chunk count when progress metadata exists", async () => {

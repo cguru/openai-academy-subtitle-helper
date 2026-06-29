@@ -11,32 +11,52 @@ export function buildGeneratorCommand({
   parallelJobs = 3,
   reasoningEffort = "medium",
 }) {
+  const scriptArgs = [
+    "-Url",
+    academyUrl,
+    "-OutDir",
+    outDir,
+    "-TranslateWithCodex",
+    "-TargetLanguageCode",
+    targetLanguageCode,
+    "-TargetLanguageName",
+    targetLanguageName,
+    "-ChunkSize",
+    String(chunkSize),
+    "-ParallelJobs",
+    String(parallelJobs),
+    "-ReasoningEffort",
+    reasoningEffort,
+    "-CacheNameByVideoId",
+  ];
+  const bootstrapCommand = [
+    "$OutputEncoding = [System.Text.UTF8Encoding]::new($false)",
+    "[Console]::OutputEncoding = $OutputEncoding",
+    ["&", psQuote(scriptPath), ...scriptArgs.map(formatPowerShellArgument)].join(" "),
+  ].join("; ");
+
   return {
     command: "powershell.exe",
     args: [
       "-NoProfile",
       "-ExecutionPolicy",
       "Bypass",
-      "-File",
-      scriptPath,
-      "-Url",
-      academyUrl,
-      "-OutDir",
-      outDir,
-      "-TranslateWithCodex",
-      "-TargetLanguageCode",
-      targetLanguageCode,
-      "-TargetLanguageName",
-      targetLanguageName,
-      "-ChunkSize",
-      String(chunkSize),
-      "-ParallelJobs",
-      String(parallelJobs),
-      "-ReasoningEffort",
-      reasoningEffort,
-      "-CacheNameByVideoId",
+      "-Command",
+      bootstrapCommand,
     ],
   };
+}
+
+function formatPowerShellArgument(value) {
+  if (String(value).startsWith("-")) {
+    return value;
+  }
+
+  return psQuote(value);
+}
+
+function psQuote(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
 }
 
 export async function readGenerationProgress({ cacheDir, videoId, targetLanguageCode }) {
