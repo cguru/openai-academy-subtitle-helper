@@ -15,6 +15,8 @@
   let overlay = null;
 
   registerVideoFrameWithRetry();
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === "detectVideo") {
@@ -95,16 +97,19 @@
   }
 
   function ensureOverlay(video) {
-    const parent = video.parentElement;
-    if (!parent) {
+    const host = getOverlayHost(video);
+    if (!host) {
       return;
     }
 
-    if (!parent.style.position) {
-      parent.style.position = "relative";
+    if (!host.style.position) {
+      host.style.position = "relative";
     }
 
-    overlay = parent.querySelector(`.${OVERLAY_CLASS}`);
+    if (!overlay) {
+      overlay = host.querySelector(`.${OVERLAY_CLASS}`);
+    }
+
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.className = OVERLAY_CLASS;
@@ -113,10 +118,38 @@
         borderRadius: "4px",
         display: "none",
       });
-      parent.appendChild(overlay);
+      host.appendChild(overlay);
+    }
+
+    if (overlay.parentElement !== host) {
+      host.appendChild(overlay);
     }
 
     applyOverlayLayoutStyle(overlay);
+  }
+
+  function getOverlayHost(video) {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    if (
+      fullscreenElement &&
+      fullscreenElement !== video &&
+      typeof fullscreenElement.contains === "function" &&
+      fullscreenElement.contains(video)
+    ) {
+      return fullscreenElement;
+    }
+
+    return video.parentElement;
+  }
+
+  function handleFullscreenChange() {
+    if (!activeVideo || currentCues.length === 0) {
+      return;
+    }
+
+    ensureOverlay(activeVideo);
+    applySubtitleStyle();
+    render();
   }
 
   function applyOverlayLayoutStyle(element) {
