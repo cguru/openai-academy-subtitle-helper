@@ -4,6 +4,8 @@ Local subtitle generation and display tooling for OpenAI Academy videos.
 
 This is an unofficial community project. It is not affiliated with, endorsed by, or sponsored by OpenAI.
 
+한국어 안내: [README.ko.md](README.ko.md)
+
 ## What It Does
 
 - Detects OpenAI Academy video pages in Chrome.
@@ -11,6 +13,15 @@ This is an unofficial community project. It is not affiliated with, endorsed by,
 - Generates translated subtitles locally through the Codex CLI when subtitles are missing.
 - Displays translated subtitles directly over the Academy video player.
 - Supports target language selection, reasoning effort, cancel/resume, progress display, subtitle styling, and Y-position adjustment.
+
+Supported target languages in the extension:
+
+- Korean
+- Japanese
+- Chinese Simplified
+- Spanish
+- French
+- German
 
 The tool does not download video files and this repository does not include Academy content, source subtitles, generated subtitles, translated subtitles, or translation chunks.
 
@@ -63,11 +74,13 @@ Generated files are written under `subtitles/` or the local app cache and are in
 
 ## CLI
 
-The older CLI workflow is still available:
+The older CLI workflow is still available and defaults to Korean:
 
 ```bat
 translate.bat "https://academy.openai.com/home/videos/..."
 ```
+
+For other target languages, use `scripts\New-AcademyKoreanSubtitle.ps1` directly with `-TargetLanguageCode` and `-TargetLanguageName`.
 
 ## Content And Subtitle Files
 
