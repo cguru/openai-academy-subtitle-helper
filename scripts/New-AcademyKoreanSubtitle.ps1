@@ -212,6 +212,25 @@ if ($TranslateWithCodex) {
         }
     }
 
+    function Get-ChunkPlanProgress {
+        param([Parameter(Mandatory = $true)][array] $ChunkPlans)
+
+        $completedChunks = @($ChunkPlans | Where-Object { Test-Path -LiteralPath $_.TranslatedPath }).Count
+        $currentChunk = $ChunkPlans.Count
+
+        for ($index = 0; $index -lt $ChunkPlans.Count; $index += 1) {
+            if (-not (Test-Path -LiteralPath $ChunkPlans[$index].TranslatedPath)) {
+                $currentChunk = $index + 1
+                break
+            }
+        }
+
+        return [pscustomobject]@{
+            CompletedChunks = $completedChunks
+            CurrentChunk = $currentChunk
+        }
+    }
+
     $progressPath = Join-Path $chunkDir "progress.json"
     @{
         videoId = $vimeoId
@@ -236,14 +255,14 @@ if ($TranslateWithCodex) {
             continue
         }
 
-        $completedChunks = @(Get-ChildItem -LiteralPath $chunkDir -Filter "$TargetLanguageCode`_*.tsv").Count
+        $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
         @{
             videoId = $vimeoId
             targetLanguageCode = $TargetLanguageCode
             targetLanguageName = $TargetLanguageName
             sourceCueCount = $cues.Count
             totalChunks = $chunkPlans.Count
-            completedChunks = $completedChunks
+            completedChunks = $planProgress.CompletedChunks
             currentChunk = $currentChunk
             chunkSize = $ChunkSize
             status = "translating"
@@ -273,15 +292,15 @@ Rules:
             throw "Expected translated chunk was not created: $translatedChunk"
         }
 
-        $completedChunks = @(Get-ChildItem -LiteralPath $chunkDir -Filter "$TargetLanguageCode`_*.tsv").Count
+        $planProgress = Get-ChunkPlanProgress -ChunkPlans $chunkPlans
         @{
             videoId = $vimeoId
             targetLanguageCode = $TargetLanguageCode
             targetLanguageName = $TargetLanguageName
             sourceCueCount = $cues.Count
             totalChunks = $chunkPlans.Count
-            completedChunks = $completedChunks
-            currentChunk = [Math]::Min($completedChunks + 1, $chunkPlans.Count)
+            completedChunks = $planProgress.CompletedChunks
+            currentChunk = $planProgress.CurrentChunk
             chunkSize = $ChunkSize
             status = "translating"
             updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
@@ -289,12 +308,12 @@ Rules:
     }
 
     $translations = @{}
-    foreach ($translatedChunk in Get-ChildItem -LiteralPath $chunkDir -Filter "$TargetLanguageCode`_*.tsv") {
-        foreach ($line in Get-Content -LiteralPath $translatedChunk.FullName -Encoding UTF8) {
+    foreach ($chunkPlan in $chunkPlans) {
+        foreach ($line in Get-Content -LiteralPath $chunkPlan.TranslatedPath -Encoding UTF8) {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             $parts = $line -split "`t", 2
             if ($parts.Count -ne 2 -or $parts[0] -notmatch '^\d+$') {
-                throw "Invalid translated TSV line in $($translatedChunk.FullName): $line"
+                throw "Invalid translated TSV line in $($chunkPlan.TranslatedPath): $line"
             }
             $translations[[int] $parts[0]] = $parts[1].Trim()
         }

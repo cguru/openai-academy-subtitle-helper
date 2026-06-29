@@ -87,6 +87,64 @@ test("uses a planned total chunk count when progress metadata exists", async () 
   });
 });
 
+test("counts only translated chunks from the current generation plan", async () => {
+  const cacheDir = await mkdtemp(join(tmpdir(), "academy-progress-"));
+  const chunkDir = join(cacheDir, "123.ko.chunks");
+  await mkdir(chunkDir);
+  await writeFile(
+    join(chunkDir, "progress.json"),
+    JSON.stringify({ totalChunks: 4, chunkSize: 25 }),
+    "utf8",
+  );
+  await writeFile(join(chunkDir, "en_1_25.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "en_26_50.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "en_51_75.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "en_76_100.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "en_1_50.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "en_51_100.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "ko_1_25.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "ko_26_50.tsv"), "", "utf8");
+  await writeFile(join(chunkDir, "ko_1_50.tsv"), "", "utf8");
+
+  const progress = await readGenerationProgress({
+    cacheDir,
+    videoId: "123",
+    targetLanguageCode: "ko",
+  });
+
+  assert.deepEqual(progress, {
+    totalChunks: 4,
+    completedChunks: 2,
+    percent: 50,
+    chunkSize: 25,
+  });
+});
+
+test("reads PowerShell UTF-8 BOM progress metadata", async () => {
+  const cacheDir = await mkdtemp(join(tmpdir(), "academy-progress-"));
+  const chunkDir = join(cacheDir, "123.ko.chunks");
+  await mkdir(chunkDir);
+  await writeFile(
+    join(chunkDir, "progress.json"),
+    `\uFEFF${JSON.stringify({ totalChunks: 4, chunkSize: 25, status: "translating" })}`,
+    "utf8",
+  );
+
+  const progress = await readGenerationProgress({
+    cacheDir,
+    videoId: "123",
+    targetLanguageCode: "ko",
+  });
+
+  assert.deepEqual(progress, {
+    totalChunks: 4,
+    completedChunks: 0,
+    percent: 0,
+    status: "translating",
+    chunkSize: 25,
+  });
+});
+
 test("includes progress metadata timestamps and phase when present", async () => {
   const cacheDir = await mkdtemp(join(tmpdir(), "academy-progress-"));
   const chunkDir = join(cacheDir, "123.ko.chunks");
