@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Generated subtitles and translation cache
+subtitles/*
+!subtitles/.gitkeep
+*.srt
+*.vtt
+*.ass
+*.ssa
+*.sbv
+*.dfxp
+*.ttml
+*.jsonl
+
+# Local generated chunks and temp files
+*.chunk.*
+*.tmp
+*.temp
+.cache/
+cache/
+tmp/
+temp/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

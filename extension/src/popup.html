@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <h1>Academy Subtitle Helper</h1>
+      <div class="row">
+        <button id="generate" type="button">Generate</button>
+        <button id="cancel" type="button" disabled>Cancel</button>
+      </div>
+      <div class="row">
+        <button id="toggle-subtitles" type="button">Subtitles On</button>
+      </div>
+      <div id="progress-panel" hidden>
+        <progress id="progress" max="100" value="0"></progress>
+        <div id="progress-label">Preparing...</div>
+      </div>
+      <div id="status">Open an OpenAI Academy video page.</div>
+      <div class="utility-row">
+        <button id="load" type="button">Reload subtitles</button>
+      </div>
+      <label>
+        Target language
+        <select id="target-language">
+          <option value="ko">Korean</option>
+          <option value="ja">Japanese</option>
+          <option value="zh-Hans">Chinese Simplified</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+        </select>
+      </label>
+      <label>
+        Reasoning effort
+        <select id="reasoning-effort">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="xhigh">Extra high</option>
+        </select>
+      </label>
+      <fieldset class="style-settings">
+        <legend>Subtitle style</legend>
+        <label>
+          Font size <output id="font-size-value" for="font-size">24px</output>
+          <input id="font-size" type="range" min="16" max="48" step="1" value="24">
+        </label>
+        <label>
+          Y position <output id="bottom-offset-value" for="bottom-offset">96px</output>
+          <input id="bottom-offset" type="range" min="24" max="180" step="4" value="96">
+        </label>
+        <div class="color-row">
+          <label>
+            Text
+            <input id="subtitle-color" type="color" value="#ffffff">
+          </label>
+          <label>
+            Background
+            <input id="background-color" type="color" value="#000000">
+          </label>
+        </div>
+        <label>
+          Background opacity <output id="background-opacity-value" for="background-opacity">72%</output>
+          <input id="background-opacity" type="range" min="0" max="1" step="0.05" value="0.72">
+        </label>
+        <label class="checkbox-row">
+          <input id="subtitle-bold" type="checkbox">
+          Bold
+        </label>
+      </fieldset>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

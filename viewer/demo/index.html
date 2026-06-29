@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Academy Subtitle Viewer Demo</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f6f7f9;
+        color: #171717;
+      }
+
+      main {
+        max-width: 960px;
+        margin: 32px auto;
+        padding: 0 20px;
+      }
+
+      .player {
+        background: #111;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #202124;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        margin-top: 16px;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        padding: 8px 12px;
+        border: 1px solid #c7cbd1;
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+      }
+
+      label {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Academy Subtitle Viewer Demo</h1>
+      <p>Choose a local video file, then play it to see the sample translated subtitles.</p>
+
+      <div class="player">
+        <video id="video" controls></video>
+      </div>
+
+      <div class="controls">
+        <label>
+          Video file
+          <input id="video-file" type="file" accept="video/*">
+        </label>
+        <button id="smaller" type="button">Smaller</button>
+        <button id="larger" type="button">Larger</button>
+        <button id="sync-back" type="button">-0.25s</button>
+        <button id="sync-forward" type="button">+0.25s</button>
+        <button id="sync-reset" type="button">Reset sync</button>
+        <span id="status"></span>
+      </div>
+    </main>
+
+    <script type="module">
+      import { parseSubtitleText } from "../src/subtitle-parser.js";
+      import { findActiveCue } from "../src/subtitle-timing.js";
+      import { DEFAULT_SETTINGS, mergeSettings } from "../src/settings.js";
+      import { createSubtitleOverlay } from "../src/overlay.js";
+
+      const sampleVtt = `WEBVTT
+
+1
+00:00:01.000 --> 00:00:04.000
+OpenAI Academy 자막 도우미 데모입니다.
+
+2
+00:00:05.000 --> 00:00:08.000
+자막 스타일과 싱크를 조정할 수 있습니다.
+
+3
+00:00:09.000 --> 00:00:12.000
+실제 구현에서는 Academy 영상 자막을 로컬 캐시에서 불러옵니다.
+`;
+
+      const video = document.querySelector("#video");
+      const videoFile = document.querySelector("#video-file");
+      const status = document.querySelector("#status");
+      const cues = parseSubtitleText(sampleVtt);
+      let settings = mergeSettings(DEFAULT_SETTINGS);
+      let syncOffsetSeconds = 0;
+      let overlay = createSubtitleOverlay(video, settings);
+
+      videoFile.addEventListener("change", () => {
+        const file = videoFile.files?.[0];
+        if (!file) {
+          return;
+        }
+        video.src = URL.createObjectURL(file);
+        video.load();
+      });
+
+      document.querySelector("#smaller").addEventListener("click", () => {
+        updateFontSize(-2);
+      });
+
+      document.querySelector("#larger").addEventListener("click", () => {
+        updateFontSize(2);
+      });
+
+      document.querySelector("#sync-back").addEventListener("click", () => {
+        syncOffsetSeconds -= 0.25;
+        render();
+      });
+
+      document.querySelector("#sync-forward").addEventListener("click", () => {
+        syncOffsetSeconds += 0.25;
+        render();
+      });
+
+      document.querySelector("#sync-reset").addEventListener("click", () => {
+        syncOffsetSeconds = 0;
+        render();
+      });
+
+      video.addEventListener("timeupdate", render);
+      video.addEventListener("seeked", render);
+
+      function updateFontSize(delta) {
+        settings = mergeSettings({
+          subtitleStyle: {
+            fontSizePx: Math.max(14, settings.subtitleStyle.fontSizePx + delta),
+          },
+        });
+        overlay.destroy();
+        overlay = createSubtitleOverlay(video, settings);
+        render();
+      }
+
+      function render() {
+        const cue = findActiveCue(cues, video.currentTime || 0, {
+          offsetSeconds: syncOffsetSeconds,
+        });
+        overlay.setText(cue?.text ?? "");
+        status.textContent = `Font ${settings.subtitleStyle.fontSizePx}px, sync ${syncOffsetSeconds.toFixed(2)}s`;
+      }
+
+      render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Academy Subtitle Helper",
+  "version": "0.1.0",
+  "description": "Local subtitle viewer and translator helper for OpenAI Academy.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApWPHMFgwA9Pu2lMZqm1430RtkFMsQR2rQVf9mo9sEyjD5x97nqEYhvayqfxZN6KkFvN3bYFFxjJOW6SYfi+IpIVUseqpL9ByFqqjoPTaGGngdJgLsW4bp3NdwKbQdNSEMRcYOZMuhl560khMR+el3nI67zgH+nS8sgnESM3P/zcuOJ2TFlOmKa9P02dnoRJlnmWYCfExNnvkitc3XzdUhxmEUcN1AaBhv5iaXDtaVcgf9EmsddC3LoZ0Kcb0r6mcylwLFEbA8bObtua0Q7VLZ9mYRFFuqFdEg6RWJdmx+66srDjlv1xsq2RAjheaDducjfC+0SC1sSr57tgI+vifEQIDAQAB",
+  "permissions": ["activeTab", "nativeMessaging", "storage", "tabs"],
+  "host_permissions": ["https://academy.openai.com/*", "https://player.vimeo.com/*"],
+  "action": {
+    "default_title": "Academy Subtitle Helper",
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://academy.openai.com/*", "https://player.vimeo.com/*"],
+      "js": ["src/content-script.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}
