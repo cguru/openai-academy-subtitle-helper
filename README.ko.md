@@ -16,6 +16,16 @@ OpenAI Academy 영상을 영어가 아닌 언어로 더 편하게 보기 위한 
 
 이 도구는 영상 파일을 다운로드하지 않습니다. 이 저장소에는 Academy 콘텐츠, 원본 자막, 번역 자막, 자막 조각, 추출된 텍스트가 포함되어 있지 않습니다.
 
+## 스크린샷
+
+자막 생성 진행 중인 확장 프로그램 팝업:
+
+![자막 생성 진행률을 보여주는 확장 프로그램 팝업](docs/images/extension-popup-progress.png)
+
+Academy 영상 위에 표시되는 번역 자막:
+
+![Academy 영상 위에 표시되는 번역 자막](docs/images/academy-subtitle-overlay.png)
+
 ## 지원 언어
 
 Chrome 확장 프로그램에서 선택할 수 있는 번역 대상 언어는 다음과 같습니다.

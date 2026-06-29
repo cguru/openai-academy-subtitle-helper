@@ -25,6 +25,16 @@ Supported target languages in the extension:
 
 The tool does not download video files and this repository does not include Academy content, source subtitles, generated subtitles, translated subtitles, or translation chunks.
 
+## Screenshots
+
+Extension popup during subtitle generation:
+
+![Extension popup showing generation progress](docs/images/extension-popup-progress.png)
+
+Translated subtitle overlay on an Academy video:
+
+![Translated subtitle overlay on an Academy video](docs/images/academy-subtitle-overlay.png)
+
 ## Repository Layout
 
 ```text
