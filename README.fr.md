@@ -6,6 +6,8 @@ Ce projet est un projet communautaire non officiel. Il n'est pas affilié à Ope
 
 Langues: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
+> État actuel : Windows uniquement. macOS et Linux ne sont pas encore pris en charge.
+
 ## Que fait cet outil ?
 
 - Détecte les pages vidéo OpenAI Academy dans Chrome.

@@ -6,6 +6,8 @@ Este es un proyecto comunitario no oficial. No está afiliado, respaldado ni pat
 
 Idiomas: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
+> Estado actual: solo Windows. macOS y Linux todavía no son compatibles.
+
 ## ¿Qué hace?
 
 - Detecta páginas de video de OpenAI Academy en Chrome.

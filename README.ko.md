@@ -6,6 +6,8 @@ OpenAI Academy 영상을 영어가 아닌 언어로 더 편하게 보기 위한 
 
 언어: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
+> 현재는 Windows만 지원합니다. macOS와 Linux는 아직 지원하지 않습니다.
+
 ## 무엇을 하나요?
 
 - Chrome에서 OpenAI Academy 영상 페이지를 감지합니다.

@@ -6,6 +6,8 @@ Dieses Projekt ist ein inoffizielles Community-Projekt. Es ist nicht mit OpenAI 
 
 Sprachen: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
+> Aktueller Stand: nur Windows. macOS und Linux werden noch nicht unterstützt.
+
 ## Was macht das Tool?
 
 - Erkennt OpenAI Academy-Videoseiten in Chrome.

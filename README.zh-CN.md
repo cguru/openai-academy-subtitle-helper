@@ -6,6 +6,8 @@
 
 语言: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
+> 当前仅支持 Windows。暂不支持 macOS 和 Linux。
+
 ## 它能做什么？
 
 - 在 Chrome 中检测 OpenAI Academy 视频页面。
