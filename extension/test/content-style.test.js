@@ -11,8 +11,8 @@ const contentScript = readFileSync(join(__dirname, "../src/content-script.js"), 
 test("content script subtitle overlay supports default and live subtitle style updates", () => {
   assert.match(contentScript, /bottomOffsetPx:\s*96/);
   assert.match(contentScript, /type === "updateSubtitleStyle"/);
-  assert.match(contentScript, /bottom:\s*`\$\{subtitleStyle\.bottomOffsetPx\}px`/);
-  assert.match(contentScript, /fontSize:\s*`\$\{subtitleStyle\.fontSizePx\}px`/);
+  assert.match(contentScript, /bottom:\s*`\$\{scaleSubtitleDimension\(subtitleStyle\.bottomOffsetPx\)\}px`/);
+  assert.match(contentScript, /fontSize:\s*`\$\{scaleSubtitleDimension\(subtitleStyle\.fontSizePx\)\}px`/);
   assert.match(contentScript, /width:\s*"94%"/);
   assert.match(contentScript, /maxWidth:\s*"94%"/);
   assert.match(contentScript, /wordBreak:\s*"keep-all"/);
@@ -50,8 +50,8 @@ test("content script moves styled subtitle overlay into fullscreen containers", 
   assert.ok(overlay);
   assert.equal(overlay.parentElement, fullscreenHost);
   assert.equal(overlay.textContent, "전체 화면 자막");
-  assert.equal(overlay.style.fontSize, "36px");
-  assert.equal(overlay.style.bottom, "140px");
+  assert.equal(overlay.style.fontSize, "54px");
+  assert.equal(overlay.style.bottom, "210px");
   assert.equal(videoParent.querySelector(".academy-subtitle-helper-overlay"), null);
 });
 
@@ -70,6 +70,7 @@ function createContentScriptHarness() {
   const videoParent = document.createElement("div");
   const video = document.createElement("video");
   const fullscreenHost = document.createElement("div");
+  fullscreenHost.rect = { width: 1920, height: 1080 };
   document.body.appendChild(videoParent);
   document.body.appendChild(fullscreenHost);
   videoParent.appendChild(video);
@@ -142,6 +143,9 @@ function createFakeElement(tagName, ownerDocument) {
     addEventListener() {},
     contains(candidate) {
       return this === candidate || this.children.some((child) => child.contains(candidate));
+    },
+    getBoundingClientRect() {
+      return this.rect ?? { width: 960, height: 540 };
     },
     querySelector(selector) {
       if (selector === "video" && this.tagName === "VIDEO") {

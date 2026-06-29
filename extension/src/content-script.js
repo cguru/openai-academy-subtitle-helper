@@ -188,12 +188,31 @@
     }
 
     Object.assign(overlay.style, {
-      bottom: `${subtitleStyle.bottomOffsetPx}px`,
-      fontSize: `${subtitleStyle.fontSizePx}px`,
+      bottom: `${scaleSubtitleDimension(subtitleStyle.bottomOffsetPx)}px`,
+      fontSize: `${scaleSubtitleDimension(subtitleStyle.fontSizePx)}px`,
       fontWeight: subtitleStyle.bold ? "700" : "400",
       color: subtitleStyle.color,
       backgroundColor: rgba(subtitleStyle.backgroundColor, subtitleStyle.backgroundOpacity),
     });
+  }
+
+  function scaleSubtitleDimension(value) {
+    const scale = getFullscreenScale();
+    return Math.round(value * scale);
+  }
+
+  function getFullscreenScale() {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!fullscreenElement || !activeVideo || !fullscreenElement.contains(activeVideo)) {
+      return 1;
+    }
+
+    const height = fullscreenElement.getBoundingClientRect?.().height || 0;
+    if (!height) {
+      return 1.5;
+    }
+
+    return clampNumber(height / 720, 1, 2, 1);
   }
 
   function normalizeSubtitleStyle(style = {}) {
