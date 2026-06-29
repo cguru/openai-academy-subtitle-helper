@@ -4,7 +4,7 @@ OpenAI Academy 영상을 영어가 아닌 언어로 더 편하게 보기 위한 
 
 이 프로젝트는 비공식 커뮤니티 프로젝트입니다. OpenAI와 제휴, 보증, 후원을 받은 프로젝트가 아닙니다.
 
-[English README](README.md)
+언어: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
 ## 무엇을 하나요?
 

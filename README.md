@@ -4,7 +4,7 @@ Local subtitle generation and display tooling for OpenAI Academy videos.
 
 This is an unofficial community project. It is not affiliated with, endorsed by, or sponsored by OpenAI.
 
-한국어 안내: [README.ko.md](README.ko.md)
+Languages: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
 ## What It Does
 
