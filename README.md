@@ -74,13 +74,13 @@ Generated files are written under `subtitles/` or the local app cache and are in
 
 ## CLI
 
-The older CLI workflow is still available and defaults to Korean:
+The CLI workflow is also available and defaults to Korean:
 
 ```bat
-translate.bat "https://academy.openai.com/home/videos/..."
+oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
-For other target languages, use `scripts\New-AcademyKoreanSubtitle.ps1` directly with `-TargetLanguageCode` and `-TargetLanguageName`.
+For other target languages, use `scripts\oash.ps1` directly with `-TargetLanguageCode` and `-TargetLanguageName`.
 
 ## Content And Subtitle Files
 

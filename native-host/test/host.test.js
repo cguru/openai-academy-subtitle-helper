@@ -3,10 +3,14 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { handleMessage } from "../src/host.js";
+import { defaultGeneratorScriptPath, handleMessage } from "../src/host.js";
 
 test("responds to ping", async () => {
   assert.deepEqual(await handleMessage({ type: "ping" }, { cacheDir: "." }), { type: "pong" });
+});
+
+test("uses the short oash script name by default", () => {
+  assert.match(defaultGeneratorScriptPath(), /scripts[\\/]oash\.ps1$/);
 });
 
 test("returns cached subtitle cues", async () => {
@@ -54,7 +58,7 @@ test("starts the generator for generateSubtitle requests", async () => {
     },
     {
       cacheDir: "C:\\cache",
-      generatorScriptPath: "C:\\tool\\New-AcademyKoreanSubtitle.ps1",
+      generatorScriptPath: "C:\\tool\\oash.ps1",
       startCommand: (command) => {
         calls.push(command);
         return {
@@ -160,7 +164,7 @@ test("marks generation status failed when the generator exits non-zero", async (
     },
     {
       cacheDir: "C:\\cache",
-      generatorScriptPath: "C:\\tool\\New-AcademyKoreanSubtitle.ps1",
+      generatorScriptPath: "C:\\tool\\oash.ps1",
       jobs,
       startCommand: () => ({
         cancel: () => {},

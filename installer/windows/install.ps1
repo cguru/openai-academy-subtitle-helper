@@ -59,7 +59,8 @@ New-Item -ItemType Directory -Force -Path $InstallRoot, $NativeHostRoot, $Viewer
 Copy-Item -Recurse -Force (Join-Path $ToolRoot "native-host\src") $NativeHostRoot
 Copy-Item -Force (Join-Path $ToolRoot "native-host\package.json") $NativeHostRoot
 Copy-Item -Recurse -Force (Join-Path $ToolRoot "viewer\src") $ViewerRoot
-Copy-Item -Force (Join-Path $ToolRoot "scripts\New-AcademyKoreanSubtitle.ps1") $ScriptsRoot
+Copy-Item -Force (Join-Path $ToolRoot "scripts\oash.ps1") $ScriptsRoot
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $ScriptsRoot "New-AcademyKoreanSubtitle.ps1")
 
 $launcherPath = Join-Path $NativeHostRoot "run-native-host.cmd"
 @"

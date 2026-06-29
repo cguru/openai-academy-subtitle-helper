@@ -140,7 +140,7 @@ export function defaultGeneratorScriptPath() {
     fileURLToPath(new URL("..", import.meta.url)),
     "..",
     "scripts",
-    "New-AcademyKoreanSubtitle.ps1",
+    "oash.ps1",
   );
 }
 

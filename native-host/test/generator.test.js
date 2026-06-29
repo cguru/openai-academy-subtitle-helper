@@ -7,7 +7,7 @@ import { buildGeneratorCommand, readGenerationProgress } from "../src/generator.
 
 test("builds a PowerShell command for Academy subtitle generation", () => {
   const command = buildGeneratorCommand({
-    scriptPath: "C:\\tool\\New-AcademyKoreanSubtitle.ps1",
+    scriptPath: "C:\\tool\\oash.ps1",
     academyUrl: "https://academy.openai.com/home/videos/example",
     outDir: "C:\\cache",
     targetLanguageCode: "ko",
@@ -21,7 +21,7 @@ test("builds a PowerShell command for Academy subtitle generation", () => {
     "-ExecutionPolicy",
     "Bypass",
     "-File",
-    "C:\\tool\\New-AcademyKoreanSubtitle.ps1",
+    "C:\\tool\\oash.ps1",
     "-Url",
     "https://academy.openai.com/home/videos/example",
     "-OutDir",
@@ -41,7 +41,7 @@ test("builds a PowerShell command for Academy subtitle generation", () => {
 
 test("defaults subtitle generation reasoning effort to medium", () => {
   const command = buildGeneratorCommand({
-    scriptPath: "C:\\tool\\New-AcademyKoreanSubtitle.ps1",
+    scriptPath: "C:\\tool\\oash.ps1",
     academyUrl: "https://academy.openai.com/home/videos/example",
     outDir: "C:\\cache",
     targetLanguageCode: "ko",
@@ -214,7 +214,7 @@ test("returns zero progress before chunks are created", async () => {
 });
 
 test("runs nested Codex translation without the Windows workspace sandbox", async () => {
-  const script = await readFile("../scripts/New-AcademyKoreanSubtitle.ps1", "utf8");
+  const script = await readFile("../scripts/oash.ps1", "utf8");
 
   assert.match(
     script,
