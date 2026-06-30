@@ -18,6 +18,13 @@ test("content script subtitle overlay supports default and live subtitle style u
   assert.match(contentScript, /wordBreak:\s*"keep-all"/);
 });
 
+test("content script keeps video frame registration fresh for delayed video frames", () => {
+  assert.match(contentScript, /watchVideoFrameRegistration/);
+  assert.match(contentScript, /setInterval\(registerVideoFrameIfReady,\s*2000\)/);
+  assert.match(contentScript, /MutationObserver/);
+  assert.match(contentScript, /lastRegisteredVideoId/);
+});
+
 test("content script moves styled subtitle overlay into fullscreen containers", () => {
   const { context, document, video, videoParent, fullscreenHost, messageListeners } =
     createContentScriptHarness();

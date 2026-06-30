@@ -28,8 +28,8 @@ test("builds a PowerShell command for Academy subtitle generation", () => {
   assert.match(command.args[4], /-TranslateWithCodex/);
   assert.match(command.args[4], /-TargetLanguageCode 'ko'/);
   assert.match(command.args[4], /-TargetLanguageName 'Korean'/);
-  assert.match(command.args[4], /-ChunkSize '25'/);
-  assert.match(command.args[4], /-ParallelJobs '3'/);
+  assert.match(command.args[4], /-ChunkSize '75'/);
+  assert.match(command.args[4], /-ParallelJobs '5'/);
   assert.match(command.args[4], /-ReasoningEffort 'high'/);
   assert.match(command.args[4], /-CacheNameByVideoId/);
 });
@@ -72,13 +72,13 @@ test("passes a custom parallel job count to the generator", () => {
     outDir: "C:\\cache",
     targetLanguageCode: "ko",
     targetLanguageName: "Korean",
-    parallelJobs: 5,
+    parallelJobs: 10,
   });
 
-  assert.match(command.args[4], /-ParallelJobs '5'/);
+  assert.match(command.args[4], /-ParallelJobs '10'/);
 });
 
-test("defaults subtitle generation reasoning effort to medium", () => {
+test("defaults subtitle generation reasoning effort to low", () => {
   const command = buildGeneratorCommand({
     scriptPath: "C:\\tool\\oash.ps1",
     academyUrl: "https://academy.openai.com/home/videos/example",
@@ -87,7 +87,20 @@ test("defaults subtitle generation reasoning effort to medium", () => {
     targetLanguageName: "Korean",
   });
 
-  assert.match(command.args[4], /-ReasoningEffort 'medium'/);
+  assert.match(command.args[4], /-ReasoningEffort 'low'/);
+});
+
+test("passes a custom chunk size to the generator", () => {
+  const command = buildGeneratorCommand({
+    scriptPath: "C:\\tool\\oash.ps1",
+    academyUrl: "https://academy.openai.com/home/videos/example",
+    outDir: "C:\\cache",
+    targetLanguageCode: "ko",
+    targetLanguageName: "Korean",
+    chunkSize: 100,
+  });
+
+  assert.match(command.args[4], /-ChunkSize '100'/);
 });
 
 test("uses a planned total chunk count when progress metadata exists", async () => {
@@ -258,7 +271,16 @@ test("runs nested Codex translation without the Windows workspace sandbox", asyn
 test("supports bounded parallel translation jobs in the PowerShell generator", async () => {
   const script = await readFile("../scripts/oash.ps1", "utf8");
 
-  assert.match(script, /\[ValidateRange\(1,\s*5\)\]\s*\[int\]\s*\$ParallelJobs\s*=\s*3/);
+  assert.match(script, /\[ValidateRange\(1,\s*10\)\]\s*\[int\]\s*\$ParallelJobs\s*=\s*5/);
   assert.match(script, /Start-TranslationJob/);
   assert.match(script, /while \(\$pendingPlans\.Count -gt 0 -or \$runningJobs\.Count -gt 0\)/);
+});
+
+test("writes generation progress with retry to tolerate popup polling", async () => {
+  const script = await readFile("../scripts/oash.ps1", "utf8");
+
+  assert.match(script, /function Set-Utf8TextFileWithRetry/);
+  assert.match(script, /catch \[System\.IO\.IOException\]/);
+  assert.match(script, /Set-Utf8TextFileWithRetry -Path \$Path -Value/);
+  assert.match(script, /Set-Utf8TextFileWithRetry -Path \$progressPath -Value/);
 });

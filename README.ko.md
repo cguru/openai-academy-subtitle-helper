@@ -52,6 +52,8 @@ viewer/         로컬 자막 오버레이 및 뷰어 유틸리티
 subtitles/      로컬 출력 및 캐시 폴더, Git에서 무시됨
 ```
 
+버전 변경 내역은 [RELEASE_NOTES.md](RELEASE_NOTES.md)를 참고하세요.
+
 ## 요구사항
 
 - Windows
@@ -101,14 +103,14 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 다른 언어로 생성하려면 PowerShell 스크립트를 직접 실행하면서 `-TargetLanguageCode`와 `-TargetLanguageName`을 지정합니다.
-자막 생성은 기본적으로 번역 청크 3개를 병렬로 처리합니다. 직접 조절하려면 `-ParallelJobs 1`부터 `-ParallelJobs 5`까지 지정할 수 있습니다.
+자막 생성은 기본적으로 번역 청크 5개를 병렬로 처리합니다. 직접 조절하려면 `-ParallelJobs 1`부터 `-ParallelJobs 10`까지 지정할 수 있습니다.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\oash.ps1 `
   -Url "https://academy.openai.com/home/videos/..." `
   -OutDir subtitles `
   -TranslateWithCodex `
-  -ParallelJobs 3 `
+  -ParallelJobs 5 `
   -TargetLanguageCode ja `
   -TargetLanguageName Japanese
 ```

@@ -13,8 +13,10 @@
   let subtitleStyle = DEFAULT_SUBTITLE_STYLE;
   let activeVideo = null;
   let overlay = null;
+  let lastRegisteredVideoId = undefined;
+  let lastRegisteredAt = 0;
 
-  registerVideoFrameWithRetry();
+  watchVideoFrameRegistration();
   document.addEventListener("fullscreenchange", handleFullscreenChange);
   document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
@@ -71,18 +73,35 @@
     return document.querySelector("video");
   }
 
-  function registerVideoFrameWithRetry(attempt = 0) {
+  function watchVideoFrameRegistration() {
+    registerVideoFrameIfReady();
+
+    if (typeof setInterval === "function") {
+      setInterval(registerVideoFrameIfReady, 2000);
+    }
+
+    if (typeof MutationObserver === "function") {
+      const observer = new MutationObserver(registerVideoFrameIfReady);
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+  }
+
+  function registerVideoFrameIfReady() {
     const video = findVideo();
     if (!video) {
-      if (attempt < 20) {
-        setTimeout(() => registerVideoFrameWithRetry(attempt + 1), 500);
-      }
       return;
     }
 
+    const videoId = detectAcademyVideoId();
+    if (videoId === lastRegisteredVideoId && Date.now() - lastRegisteredAt < 30000) {
+      return;
+    }
+
+    lastRegisteredVideoId = videoId;
+    lastRegisteredAt = Date.now();
     chrome.runtime.sendMessage({
       target: "video-frame-registry",
-      videoId: detectAcademyVideoId(),
+      videoId,
     });
   }
 

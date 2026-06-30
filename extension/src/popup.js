@@ -8,10 +8,12 @@ import {
 import { DEFAULT_SUBTITLE_STYLE, normalizeSubtitleStyle } from "./subtitle-style.js";
 
 const statusElement = document.querySelector("#status");
+const titleElement = document.querySelector("#app-title");
 const uiLanguageElement = document.querySelector("#ui-language");
 const targetLanguageElement = document.querySelector("#target-language");
 const reasoningEffortElement = document.querySelector("#reasoning-effort");
 const parallelJobsElement = document.querySelector("#parallel-jobs");
+const chunkSizeElement = document.querySelector("#chunk-size");
 const fontSizeElement = document.querySelector("#font-size");
 const fontSizeValueElement = document.querySelector("#font-size-value");
 const bottomOffsetElement = document.querySelector("#bottom-offset");
@@ -23,6 +25,7 @@ const backgroundOpacityValueElement = document.querySelector("#background-opacit
 const subtitleBoldElement = document.querySelector("#subtitle-bold");
 const generateButton = document.querySelector("#generate");
 const cancelButton = document.querySelector("#cancel");
+const deleteSubtitlesButton = document.querySelector("#delete-subtitles");
 const toggleSubtitlesButton = document.querySelector("#toggle-subtitles");
 const progressPanel = document.querySelector("#progress-panel");
 const progressElement = document.querySelector("#progress");
@@ -36,6 +39,10 @@ const targetLanguageLabelKeys = {
   de: "languageGerman",
 };
 const PROGRESS_POLL_INTERVAL_MS = 2000;
+const DEFAULT_REASONING_EFFORT = "low";
+const DEFAULT_PARALLEL_JOBS = "5";
+const DEFAULT_CHUNK_SIZE = "75";
+const GENERATION_DEFAULTS_VERSION = 2;
 
 let currentGeneration = null;
 let pollTimer = null;
@@ -43,10 +50,12 @@ let progressClockTimer = null;
 let subtitleStyle = DEFAULT_SUBTITLE_STYLE;
 let subtitlesEnabled = true;
 let uiLanguage = "en";
+let cachedSubtitleAvailable = false;
 
 document.querySelector("#load").addEventListener("click", loadCachedSubtitle);
 generateButton.addEventListener("click", generateSubtitle);
 cancelButton.addEventListener("click", cancelGeneration);
+deleteSubtitlesButton.addEventListener("click", deleteCachedSubtitles);
 toggleSubtitlesButton.addEventListener("click", toggleSubtitles);
 uiLanguageElement.addEventListener("change", async () => {
   await chrome.storage.local.set({ uiLanguage: uiLanguageElement.value });
@@ -65,6 +74,7 @@ uiLanguageElement.addEventListener("change", async () => {
 });
 targetLanguageElement.addEventListener("change", async () => {
   await chrome.storage.local.set({ targetLanguage: targetLanguageElement.value });
+  setCachedSubtitleAvailable(false);
   if (subtitlesEnabled) {
     await loadCachedSubtitle();
   }
@@ -74,6 +84,9 @@ reasoningEffortElement.addEventListener("change", async () => {
 });
 parallelJobsElement.addEventListener("change", async () => {
   await chrome.storage.local.set({ parallelJobs: parallelJobsElement.value });
+});
+chunkSizeElement.addEventListener("change", async () => {
+  await chrome.storage.local.set({ chunkSize: chunkSizeElement.value });
 });
 [
   fontSizeElement,
@@ -88,6 +101,8 @@ init();
 async function init() {
   const stored = await chrome.storage.local.get([
     "currentGeneration",
+    "chunkSize",
+    "generationDefaultsVersion",
     "parallelJobs",
     "reasoningEffort",
     "subtitleStyle",
@@ -105,11 +120,16 @@ async function init() {
   currentGeneration = stored.currentGeneration ?? null;
   subtitlesEnabled = stored.subtitlesEnabled !== false;
   targetLanguageElement.value = stored.targetLanguage ?? getDefaultTargetLanguage(uiLanguage);
-  reasoningEffortElement.value = stored.reasoningEffort ?? "medium";
-  parallelJobsElement.value = stored.parallelJobs ?? "3";
+  const generationSettings = resolveGenerationSettings(stored);
+  reasoningEffortElement.value = generationSettings.reasoningEffort;
+  parallelJobsElement.value = generationSettings.parallelJobs;
+  chunkSizeElement.value = generationSettings.chunkSize;
   subtitleStyle = normalizeSubtitleStyle(stored.subtitleStyle);
   if (!stored.targetLanguage) {
     await chrome.storage.local.set({ targetLanguage: targetLanguageElement.value });
+  }
+  if (generationSettings.shouldPersist) {
+    await chrome.storage.local.set(generationSettings.storageUpdate);
   }
   applyLocalization();
   renderSubtitleStyleControls();
@@ -149,6 +169,7 @@ async function loadCachedSubtitle(options = {}) {
     });
 
     if (response?.type === "subtitleMissing") {
+      setCachedSubtitleAvailable(false);
       setGenerateNeedsAttention(true);
       setStatus(t("noCachedSubtitlesForVideo", { language: targetLanguageName, videoId: detected.videoId }));
       return;
@@ -173,6 +194,7 @@ async function loadCachedSubtitle(options = {}) {
       return;
     }
     setGenerateNeedsAttention(false);
+    setCachedSubtitleAvailable(true);
     setStatus(t("loadedCues", { count: response.cues.length }));
   } catch (error) {
     setStatus(error.message);
@@ -182,7 +204,6 @@ async function loadCachedSubtitle(options = {}) {
 async function checkCachedSubtitleAvailability() {
   if (!subtitlesEnabled) {
     setGenerateNeedsAttention(false);
-    return;
   }
 
   try {
@@ -202,12 +223,14 @@ async function checkCachedSubtitleAvailability() {
     });
 
     if (response?.type === "subtitleMissing") {
+      setCachedSubtitleAvailable(false);
       setGenerateNeedsAttention(true);
       setStatus(t("noCachedSubtitlesGenerate", { language: getTargetLanguageName(targetLanguageCode) }));
       return;
     }
 
-    if (response?.type === "subtitle") {
+    if (response?.type === "subtitleFound" || response?.type === "subtitle") {
+      setCachedSubtitleAvailable(true);
       setGenerateNeedsAttention(false);
     }
   } catch {
@@ -217,6 +240,70 @@ async function checkCachedSubtitleAvailability() {
 
 async function toggleSubtitles() {
   await setSubtitlesEnabled(!subtitlesEnabled);
+}
+
+async function deleteCachedSubtitles() {
+  try {
+    const detected = await detectCurrentVideo();
+    if (!detected) return;
+
+    const targetLanguageCode = targetLanguageElement.value;
+    const targetLanguageName = getTargetLanguageName(targetLanguageCode);
+    deleteSubtitlesButton.disabled = true;
+    setStatus(t("deletingSubtitles", { language: targetLanguageName }));
+
+    const response = await sendRuntimeMessage({
+      target: "native-host",
+      payload: {
+        type: "deleteSubtitle",
+        videoId: detected.videoId,
+        targetLanguageCode,
+      },
+    });
+
+    if (response?.type === "error") {
+      setStatus(response.message);
+      updateGenerationControls();
+      return;
+    }
+
+    if (response?.type !== "subtitleDeleted") {
+      setStatus(t("unexpectedGeneratorResponse", { response: JSON.stringify(response) }));
+      updateGenerationControls();
+      return;
+    }
+
+    if (
+      currentGeneration?.videoId === detected.videoId &&
+      currentGeneration?.targetLanguageCode === targetLanguageCode
+    ) {
+      currentGeneration = null;
+      await chrome.storage.local.remove("currentGeneration");
+      setProgress(null);
+    }
+
+    try {
+      await sendRuntimeMessage({
+        target: "content-frame",
+        payload: { type: "hideSubtitles" },
+      });
+    } catch {
+      // Cache deletion succeeded; a video frame may not be available.
+    }
+
+    setGenerateNeedsAttention(true);
+    setCachedSubtitleAvailable(false);
+    setStatus(
+      t("deletedSubtitles", {
+        language: targetLanguageName,
+        count: response.deletedCount ?? 0,
+      }),
+    );
+    updateGenerationControls();
+  } catch (error) {
+    setStatus(error.message);
+    updateGenerationControls();
+  }
 }
 
 async function setSubtitlesEnabled(enabled, options = {}) {
@@ -272,16 +359,21 @@ async function saveSubtitleStyleFromControls() {
 async function generateSubtitle() {
   try {
     const tab = await getActiveTab();
-    const detected = await detectCurrentVideo();
+    const isResume = generateButton.dataset.mode === "resume";
+    const detected =
+      isResume && currentGeneration?.videoId
+        ? { found: true, videoId: currentGeneration.videoId }
+        : await detectCurrentVideo();
     if (!detected) return;
 
     const targetLanguageCode = targetLanguageElement.value;
     const targetLanguageName = getTargetLanguageName(targetLanguageCode);
     const reasoningEffort = reasoningEffortElement.value;
     const parallelJobs = Number.parseInt(parallelJobsElement.value, 10);
-    const isResume = generateButton.dataset.mode === "resume";
+    const chunkSize = Number.parseInt(chunkSizeElement.value, 10);
 
     setGenerateNeedsAttention(false);
+    setCachedSubtitleAvailable(false);
     setProgress({ totalChunks: 0, completedChunks: 0, percent: 0 });
     setStatus(
       t(isResume ? "resumingSubtitles" : "generatingSubtitles", { name: targetLanguageName }),
@@ -292,12 +384,13 @@ async function generateSubtitle() {
       target: "native-host",
       payload: {
         type: isResume ? "resumeGeneration" : "generateSubtitle",
-        pageUrl: tab.url,
+        pageUrl: isResume ? currentGeneration?.pageUrl || tab.url : tab.url,
         videoId: detected.videoId,
         targetLanguageCode,
         targetLanguageName,
         reasoningEffort,
         parallelJobs,
+        chunkSize,
       },
     });
 
@@ -316,10 +409,12 @@ async function generateSubtitle() {
     currentGeneration = {
       jobId: response.jobId,
       videoId: detected.videoId,
+      pageUrl: isResume ? currentGeneration?.pageUrl || tab.url : tab.url,
       targetLanguageCode,
       targetLanguageName,
       reasoningEffort,
       parallelJobs,
+      chunkSize,
       status: "running",
     };
     await saveCurrentGeneration();
@@ -513,8 +608,10 @@ function renderProgressClock() {
 function setRunningControls(isRunning) {
   generateButton.disabled = isRunning;
   cancelButton.disabled = !isRunning;
+  deleteSubtitlesButton.disabled = isRunning;
   reasoningEffortElement.disabled = isRunning;
   parallelJobsElement.disabled = isRunning;
+  chunkSizeElement.disabled = isRunning;
   progressPanel.dataset.running = isRunning ? "true" : "false";
   if (isRunning) {
     startProgressClock();
@@ -533,10 +630,12 @@ function updateGenerationControls() {
     currentGeneration.status !== "running" &&
     currentGeneration.status !== "completed";
 
-  generateButton.disabled = isRunning;
+  generateButton.disabled = isRunning || (cachedSubtitleAvailable && !canResume);
   cancelButton.disabled = !isRunning;
+  deleteSubtitlesButton.disabled = isRunning;
   reasoningEffortElement.disabled = isRunning;
   parallelJobsElement.disabled = isRunning;
+  chunkSizeElement.disabled = isRunning;
   generateButton.textContent = isRunning
     ? t("generating")
     : canResume
@@ -547,6 +646,11 @@ function updateGenerationControls() {
 
 function setGenerateNeedsAttention(needsAttention) {
   generateButton.classList.toggle("needs-attention", needsAttention);
+}
+
+function setCachedSubtitleAvailable(available) {
+  cachedSubtitleAvailable = available;
+  updateGenerationControls();
 }
 
 function renderSubtitleStyleControls() {
@@ -590,6 +694,13 @@ function applyLocalization() {
   document.querySelectorAll("[data-i18n]").forEach((element) => {
     element.textContent = t(element.dataset.i18n);
   });
+  if (titleElement) {
+    titleElement.textContent = `${t("appName")} ${getExtensionVersion()}`;
+  }
+}
+
+function getExtensionVersion() {
+  return chrome.runtime?.getManifest?.().version ?? "";
 }
 
 function t(key, params) {
@@ -606,4 +717,35 @@ function getTargetLanguageName(languageCode) {
 
 function isSelectableUiLanguage(languageCode) {
   return ["auto", "en", "ko", "ja", "zh-Hans", "es", "fr", "de"].includes(languageCode);
+}
+
+function resolveGenerationSettings(stored) {
+  const shouldMigrate = stored.generationDefaultsVersion !== GENERATION_DEFAULTS_VERSION;
+  const settings = {
+    reasoningEffort: stored.reasoningEffort ?? DEFAULT_REASONING_EFFORT,
+    parallelJobs: stored.parallelJobs ?? DEFAULT_PARALLEL_JOBS,
+    chunkSize: stored.chunkSize ?? DEFAULT_CHUNK_SIZE,
+  };
+  const storageUpdate = { generationDefaultsVersion: GENERATION_DEFAULTS_VERSION };
+
+  if (shouldMigrate && (!stored.reasoningEffort || stored.reasoningEffort === "medium")) {
+    settings.reasoningEffort = DEFAULT_REASONING_EFFORT;
+    storageUpdate.reasoningEffort = settings.reasoningEffort;
+  }
+
+  if (shouldMigrate && (!stored.parallelJobs || stored.parallelJobs === "3")) {
+    settings.parallelJobs = DEFAULT_PARALLEL_JOBS;
+    storageUpdate.parallelJobs = settings.parallelJobs;
+  }
+
+  if (shouldMigrate && !stored.chunkSize) {
+    settings.chunkSize = DEFAULT_CHUNK_SIZE;
+    storageUpdate.chunkSize = settings.chunkSize;
+  }
+
+  return {
+    ...settings,
+    shouldPersist: shouldMigrate,
+    storageUpdate,
+  };
 }

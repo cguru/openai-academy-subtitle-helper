@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { findCachedSubtitle } from "./cache.js";
+import { deleteCachedSubtitle, findCachedSubtitle } from "./cache.js";
 import { buildGeneratorCommand, readGenerationProgress } from "./generator.js";
 import { decodeNativeMessages, encodeNativeMessage } from "./native-protocol.js";
 
@@ -43,17 +43,35 @@ export async function handleMessage(message, context = {}) {
       };
     }
 
+    if (message.type === "deleteSubtitle") {
+      const targetLanguageCode = message.targetLanguageCode || "ko";
+      const result = await deleteCachedSubtitle({
+        cacheDir,
+        videoId: message.videoId,
+        targetLanguageCode,
+      });
+
+      return {
+        type: "subtitleDeleted",
+        videoId: message.videoId,
+        targetLanguageCode,
+        ...result,
+      };
+    }
+
     if (message.type === "generateSubtitle" || message.type === "resumeGeneration") {
       const targetLanguageCode = message.targetLanguageCode || "ko";
       const targetLanguageName = message.targetLanguageName || "Korean";
-      const reasoningEffort = message.reasoningEffort || "medium";
-      const parallelJobs = message.parallelJobs || 3;
+      const reasoningEffort = message.reasoningEffort || "low";
+      const parallelJobs = message.parallelJobs || 5;
+      const chunkSize = message.chunkSize || 75;
       const command = buildGeneratorCommand({
         scriptPath: generatorScriptPath,
         academyUrl: message.pageUrl,
         outDir: cacheDir,
         targetLanguageCode,
         targetLanguageName,
+        chunkSize,
         parallelJobs,
         reasoningEffort,
       });

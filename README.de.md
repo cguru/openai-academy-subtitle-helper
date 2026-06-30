@@ -101,14 +101,14 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 Für andere Sprachen führe das PowerShell-Skript direkt aus und setze `-TargetLanguageCode` sowie `-TargetLanguageName`.
-Die Erzeugung verarbeitet standardmäßig 3 Übersetzungs-Chunks parallel. Du kannst den Wert mit `-ParallelJobs 1` bis `-ParallelJobs 5` anpassen.
+Die Erzeugung verarbeitet standardmäßig 5 Übersetzungs-Chunks parallel. Du kannst den Wert mit `-ParallelJobs 1` bis `-ParallelJobs 10` anpassen.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\oash.ps1 `
   -Url "https://academy.openai.com/home/videos/..." `
   -OutDir subtitles `
   -TranslateWithCodex `
-  -ParallelJobs 3 `
+  -ParallelJobs 5 `
   -TargetLanguageCode ja `
   -TargetLanguageName Japanese
 ```

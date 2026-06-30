@@ -30,27 +30,6 @@ export function formatProgressLabel(progress, options = {}) {
     parts.push(t("progressLastProgress", { duration: lastProgress }));
   }
 
-  if (progress.checkedAt) {
-    const checkedAgeSeconds = secondsBetween(progress.checkedAt, referenceTime);
-    parts.push(
-      checkedAgeSeconds === 0
-        ? t("progressCheckedJustNow")
-        : t("progressCheckedAgo", { duration: formatDuration(checkedAgeSeconds, t) }),
-    );
-
-    if (options.pollIntervalMs) {
-      const remainingSeconds = Math.max(
-        0,
-        Math.ceil((options.pollIntervalMs - checkedAgeSeconds * 1000) / 1000),
-      );
-      parts.push(
-        remainingSeconds === 0
-          ? t("progressNextCheckNow")
-          : t("progressNextCheckIn", { duration: formatDuration(remainingSeconds, t) }),
-      );
-    }
-  }
-
   return parts.join(" | ");
 }
 

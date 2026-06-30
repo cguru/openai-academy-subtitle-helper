@@ -48,6 +48,8 @@ viewer/         Local subtitle overlay/viewer utilities
 subtitles/      Local output/cache folder, ignored by Git
 ```
 
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for version history.
+
 ## Requirements
 
 - Windows
@@ -93,7 +95,7 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 For other target languages, use `scripts\oash.ps1` directly with `-TargetLanguageCode` and `-TargetLanguageName`.
-The generator runs 3 translation chunks in parallel by default. Use `-ParallelJobs 1` through `-ParallelJobs 5` to tune it.
+The generator runs 5 translation chunks in parallel by default. Use `-ParallelJobs 1` through `-ParallelJobs 10` to tune it.
 
 ## Content And Subtitle Files
 

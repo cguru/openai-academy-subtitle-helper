@@ -11,3 +11,7 @@ test("background attempts cached subtitle auto load when a video frame registers
   assert.match(backgroundScript, /tryAutoLoadCachedSubtitle/);
   assert.match(backgroundScript, /queueAutoLoadCachedSubtitle\(frame\)/);
 });
+
+test("background drops stale video frame registrations after send failures", () => {
+  assert.match(backgroundScript, /videoFramesByTab\.delete\(tab\.id\)/);
+});

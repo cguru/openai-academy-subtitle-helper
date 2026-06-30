@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { defaultGeneratorScriptPath, handleMessage } from "../src/host.js";
@@ -46,6 +46,26 @@ test("returns subtitleMissing when cache is empty", async () => {
   assert.deepEqual(response, { type: "subtitleMissing", videoId: "abc", targetLanguageCode: "ko" });
 });
 
+test("deletes cached subtitles and chunks for a video language", async () => {
+  const cacheDir = await mkdtemp(join(tmpdir(), "academy-subtitles-"));
+  await writeFile(join(cacheDir, "abc.ko.vtt"), "WEBVTT\n", "utf8");
+  await writeFile(join(cacheDir, "abc.ko.srt"), "1\n", "utf8");
+  await mkdir(join(cacheDir, "abc.ko.chunks"));
+  await writeFile(join(cacheDir, "abc.en.vtt"), "WEBVTT\n", "utf8");
+
+  const response = await handleMessage(
+    { type: "deleteSubtitle", videoId: "abc", targetLanguageCode: "ko" },
+    { cacheDir },
+  );
+
+  assert.equal(response.type, "subtitleDeleted");
+  assert.equal(response.deletedCount, 3);
+  await assert.rejects(access(join(cacheDir, "abc.ko.vtt")));
+  await assert.rejects(access(join(cacheDir, "abc.ko.srt")));
+  await assert.rejects(access(join(cacheDir, "abc.ko.chunks")));
+  await access(join(cacheDir, "abc.en.vtt"));
+});
+
 test("starts the generator for generateSubtitle requests", async () => {
   const calls = [];
   const response = await handleMessage(
@@ -55,7 +75,8 @@ test("starts the generator for generateSubtitle requests", async () => {
       targetLanguageCode: "ko",
       targetLanguageName: "Korean",
       reasoningEffort: "low",
-      parallelJobs: 5,
+      parallelJobs: 10,
+      chunkSize: 75,
     },
     {
       cacheDir: "C:\\cache",
@@ -78,7 +99,8 @@ test("starts the generator for generateSubtitle requests", async () => {
   assert.equal(calls[0].args[3], "-Command");
   assert.match(calls[0].args[4], /-CacheNameByVideoId/);
   assert.match(calls[0].args[4], /-ReasoningEffort 'low'/);
-  assert.match(calls[0].args[4], /-ParallelJobs '5'/);
+  assert.match(calls[0].args[4], /-ParallelJobs '10'/);
+  assert.match(calls[0].args[4], /-ChunkSize '75'/);
 });
 
 test("returns generation status with chunk progress", async () => {

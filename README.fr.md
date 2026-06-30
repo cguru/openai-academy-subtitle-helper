@@ -101,14 +101,14 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 Pour générer une autre langue, exécutez directement le script PowerShell avec `-TargetLanguageCode` et `-TargetLanguageName`.
-La génération traite 3 fragments de traduction en parallèle par défaut. Vous pouvez ajuster cette valeur avec `-ParallelJobs 1` à `-ParallelJobs 5`.
+La génération traite 5 fragments de traduction en parallèle par défaut. Vous pouvez ajuster cette valeur avec `-ParallelJobs 1` à `-ParallelJobs 10`.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\oash.ps1 `
   -Url "https://academy.openai.com/home/videos/..." `
   -OutDir subtitles `
   -TranslateWithCodex `
-  -ParallelJobs 3 `
+  -ParallelJobs 5 `
   -TargetLanguageCode ja `
   -TargetLanguageName Japanese
 ```

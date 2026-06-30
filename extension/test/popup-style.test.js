@@ -30,6 +30,12 @@ test("popup exposes a translated subtitle on off toggle", () => {
   assert.match(popupJs, /loadOnComplete && subtitlesEnabled/);
 });
 
+test("popup resumes cancelled generation without requiring a live video frame", () => {
+  assert.match(popupJs, /isResume && currentGeneration\?\.videoId/);
+  assert.match(popupJs, /currentGeneration\.videoId/);
+  assert.match(popupJs, /currentGeneration\?\.pageUrl \|\| tab\.url/);
+});
+
 test("popup saves and sends subtitle style settings", () => {
   assert.match(popupJs, /subtitleStyle/);
   assert.match(popupJs, /updateSubtitleStyle/);
@@ -40,6 +46,13 @@ test("popup highlights generate when cached subtitles are missing", () => {
   assert.match(popupCss, /needs-attention/);
   assert.match(popupJs, /checkCachedSubtitleAvailability/);
   assert.match(popupJs, /setGenerateNeedsAttention\(true\)/);
+});
+
+test("popup disables generate when cached subtitles already exist", () => {
+  assert.match(popupJs, /let cachedSubtitleAvailable = false/);
+  assert.match(popupJs, /setCachedSubtitleAvailable\(true\)/);
+  assert.match(popupJs, /response\?\.type === "subtitleFound"/);
+  assert.match(popupJs, /generateButton\.disabled = isRunning \|\| \(cachedSubtitleAvailable && !canResume\)/);
 });
 
 test("popup shows a running progress heartbeat", () => {
@@ -55,21 +68,38 @@ test("popup exposes subtitle y position controls above video navigation by defau
   assert.match(popupCss, /utility-row/);
 });
 
-test("popup exposes parallel job control with default three workers", () => {
+test("popup exposes generation tuning controls with faster defaults", () => {
   assert.match(popupHtml, /id="parallel-jobs"/);
-  assert.match(popupHtml, /<option value="3" selected>3<\/option>/);
+  assert.match(popupHtml, /<option value="5" selected>5<\/option>/);
+  assert.match(popupHtml, /<option value="10">10<\/option>/);
+  assert.match(popupHtml, /id="chunk-size"/);
+  assert.match(popupHtml, /<option value="75" selected>75<\/option>/);
+  assert.match(popupHtml, /<option value="low" selected data-i18n="low">Low<\/option>/);
   assert.match(popupJs, /parallelJobs/);
-  assert.match(popupJs, /parallelJobsElement\.value = stored\.parallelJobs \?\? "3"/);
+  assert.match(popupJs, /DEFAULT_PARALLEL_JOBS = "5"/);
+  assert.match(popupJs, /DEFAULT_CHUNK_SIZE = "75"/);
+  assert.match(popupJs, /DEFAULT_REASONING_EFFORT = "low"/);
+});
+
+test("popup exposes a delete subtitles action before subtitle style settings", () => {
+  assert.match(popupHtml, /id="delete-subtitles"/);
+  assert.ok(popupHtml.indexOf('id="delete-subtitles"') < popupHtml.indexOf('class="style-settings"'));
+  assert.match(popupCss, /danger-row/);
+  assert.match(popupJs, /deleteCachedSubtitles/);
+  assert.match(popupJs, /type: "deleteSubtitle"/);
 });
 
 test("popup exposes UI language control and localization hooks", () => {
   assert.match(popupHtml, /id="ui-language"/);
+  assert.match(popupHtml, /id="app-title"/);
   assert.match(popupHtml, /data-i18n="generate"/);
   assert.match(popupJs, /uiLanguage/);
   assert.match(popupJs, /applyLocalization/);
+  assert.match(popupJs, /getManifest\?\.\(\)\.version/);
 });
 
 test("manifest exposes extension metadata through Chrome locales", () => {
+  assert.equal(manifest.version, "0.0.2");
   assert.equal(manifest.default_locale, "en");
   assert.equal(manifest.name, "__MSG_extensionName__");
   assert.equal(manifest.description, "__MSG_extensionDescription__");

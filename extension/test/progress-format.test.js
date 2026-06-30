@@ -15,11 +15,11 @@ test("formats running progress with elapsed and last progress timing", () => {
 
   assert.equal(
     formatProgressLabel(progress),
-    "3 / 10 chunks (30%) | elapsed 3m 5s | last progress 1m 5s ago | checked just now",
+    "3 / 10 chunks (30%) | elapsed 3m 5s | last progress 1m 5s ago",
   );
 });
 
-test("formats live checking age and next check timing", () => {
+test("omits live polling timing from the progress label", () => {
   const progress = {
     totalChunks: 10,
     completedChunks: 3,
@@ -34,7 +34,7 @@ test("formats live checking age and next check timing", () => {
       now: new Date("2026-06-29T01:03:06.000Z"),
       pollIntervalMs: 2000,
     }),
-    "3 / 10 chunks (30%) | elapsed 3m 6s | last progress 1m 6s ago | checked 1s ago | next check in 1s",
+    "3 / 10 chunks (30%) | elapsed 3m 6s | last progress 1m 6s ago",
   );
 });
 
@@ -47,7 +47,7 @@ test("formats preparing progress with elapsed timing", () => {
     checkedAt: "2026-06-29T01:00:12.000Z",
   };
 
-  assert.equal(formatProgressLabel(progress), "Preparing chunks... | elapsed 12s | checked just now");
+  assert.equal(formatProgressLabel(progress), "Preparing chunks... | elapsed 12s");
 });
 
 test("formats running status with current chunk context", () => {

@@ -7,9 +7,9 @@ export function buildGeneratorCommand({
   outDir,
   targetLanguageCode,
   targetLanguageName,
-  chunkSize = 25,
-  parallelJobs = 3,
-  reasoningEffort = "medium",
+  chunkSize = 75,
+  parallelJobs = 5,
+  reasoningEffort = "low",
 }) {
   const scriptArgs = [
     "-Url",

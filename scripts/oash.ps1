@@ -6,17 +6,17 @@ param(
 
     [switch] $TranslateWithCodex,
 
-    [int] $ChunkSize = 25,
+    [int] $ChunkSize = 75,
 
-    [ValidateRange(1, 5)]
-    [int] $ParallelJobs = 3,
+    [ValidateRange(1, 10)]
+    [int] $ParallelJobs = 5,
 
     [string] $TargetLanguageCode = "ko",
 
     [string] $TargetLanguageName = "Korean",
 
     [ValidateSet("low", "medium", "high", "xhigh")]
-    [string] $ReasoningEffort = "medium",
+    [string] $ReasoningEffort = "low",
 
     [switch] $CacheNameByVideoId
 )
@@ -116,6 +116,38 @@ function Convert-VttToSrt {
 
     [System.IO.File]::WriteAllText($SrtPath, ($out -join "`n"), [System.Text.UTF8Encoding]::new($false))
     return $sequence - 1
+}
+
+function Set-Utf8TextFileWithRetry {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Value,
+        [int] $MaxAttempts = 10,
+        [int] $DelayMilliseconds = 100
+    )
+
+    $directory = Split-Path -LiteralPath $Path -Parent
+    $leaf = Split-Path -LiteralPath $Path -Leaf
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt += 1) {
+        $tempPath = Join-Path $directory ("$leaf.$PID.$([Guid]::NewGuid().ToString('N')).tmp")
+
+        try {
+            [System.IO.File]::WriteAllText($tempPath, $Value, $encoding)
+            Move-Item -LiteralPath $tempPath -Destination $Path -Force
+            return
+        } catch [System.IO.IOException] {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+            if ($attempt -eq $MaxAttempts) {
+                throw
+            }
+            Start-Sleep -Milliseconds ($DelayMilliseconds * $attempt)
+        } catch {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+            throw
+        }
+    }
 }
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
@@ -225,7 +257,7 @@ if ($TranslateWithCodex) {
             [int] $CurrentChunk = $Progress.CurrentChunk
         )
 
-        @{
+        $progressJson = @{
             videoId = $vimeoId
             targetLanguageCode = $TargetLanguageCode
             targetLanguageName = $TargetLanguageName
@@ -237,7 +269,9 @@ if ($TranslateWithCodex) {
             parallelJobs = $ParallelJobs
             status = $Status
             updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
-        } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $Path -Encoding UTF8
+        } | ConvertTo-Json -Depth 3
+
+        Set-Utf8TextFileWithRetry -Path $Path -Value ($progressJson + "`n")
     }
 
     function Get-ChunkPlanProgress {
@@ -444,7 +478,7 @@ Rules:
     Write-Host "Translated SRT: $translatedSrtPath"
     Write-Host "SRT cues: $srtCueCount"
 
-    @{
+    $completedProgressJson = @{
         videoId = $vimeoId
         targetLanguageCode = $TargetLanguageCode
         targetLanguageName = $TargetLanguageName
@@ -455,5 +489,6 @@ Rules:
         parallelJobs = $ParallelJobs
         status = "completed"
         updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
-    } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $progressPath -Encoding UTF8
+    } | ConvertTo-Json -Depth 3
+    Set-Utf8TextFileWithRetry -Path $progressPath -Value ($completedProgressJson + "`n")
 }

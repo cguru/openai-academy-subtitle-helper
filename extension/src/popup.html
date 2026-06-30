@@ -6,7 +6,7 @@
   </head>
   <body>
     <main>
-      <h1 data-i18n="appName">OpenAI Academy Subtitle Helper</h1>
+      <h1 id="app-title" data-i18n="appName">OpenAI Academy Subtitle Helper</h1>
       <div class="row">
         <button id="generate" type="button" data-i18n="generate">Generate</button>
         <button id="cancel" type="button" disabled data-i18n="cancel">Cancel</button>
@@ -49,8 +49,8 @@
       <label>
         <span data-i18n="reasoningEffort">Reasoning effort</span>
         <select id="reasoning-effort">
-          <option value="low" data-i18n="low">Low</option>
-          <option value="medium" selected data-i18n="medium">Medium</option>
+          <option value="low" selected data-i18n="low">Low</option>
+          <option value="medium" data-i18n="medium">Medium</option>
           <option value="high" data-i18n="high">High</option>
           <option value="xhigh" data-i18n="xhigh">Extra high</option>
         </select>
@@ -60,10 +60,24 @@
         <select id="parallel-jobs">
           <option value="1">1</option>
           <option value="2">2</option>
-          <option value="3" selected>3</option>
-          <option value="5">5</option>
+          <option value="3">3</option>
+          <option value="5" selected>5</option>
+          <option value="8">8</option>
+          <option value="10">10</option>
         </select>
       </label>
+      <label>
+        <span data-i18n="chunkSize">Chunk size</span>
+        <select id="chunk-size">
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="75" selected>75</option>
+          <option value="100">100</option>
+        </select>
+      </label>
+      <div class="danger-row">
+        <button id="delete-subtitles" type="button" data-i18n="deleteSubtitles">Delete subtitles</button>
+      </div>
       <fieldset class="style-settings">
         <legend data-i18n="subtitleStyle">Subtitle style</legend>
         <label>

@@ -96,6 +96,9 @@ async function sendToActiveVideoFrame(payload) {
   try {
     return await sendFrameMessage(frame, payload);
   } catch (error) {
+    if (videoFramesByTab.get(tab.id) === frame) {
+      videoFramesByTab.delete(tab.id);
+    }
     return { ok: false, message: error.message };
   }
 }

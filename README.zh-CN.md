@@ -101,14 +101,14 @@ oash.bat "https://academy.openai.com/home/videos/..."
 ```
 
 如需生成其他语言，请直接运行 PowerShell 脚本，并指定 `-TargetLanguageCode` 和 `-TargetLanguageName`。
-字幕生成默认并行处理 3 个翻译片段。可通过 `-ParallelJobs 1` 到 `-ParallelJobs 5` 调整。
+字幕生成默认并行处理 5 个翻译片段。可通过 `-ParallelJobs 1` 到 `-ParallelJobs 10` 调整。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\oash.ps1 `
   -Url "https://academy.openai.com/home/videos/..." `
   -OutDir subtitles `
   -TranslateWithCodex `
-  -ParallelJobs 3 `
+  -ParallelJobs 5 `
   -TargetLanguageCode ja `
   -TargetLanguageName Japanese
 ```
