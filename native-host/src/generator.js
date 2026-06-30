@@ -1,6 +1,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
+const TRANSIENT_PROGRESS_READ_ERROR_CODES = new Set(["EBUSY", "EPERM"]);
+
 export function buildGeneratorCommand({
   scriptPath,
   academyUrl,
@@ -120,7 +122,7 @@ function parseSourceChunkName(file) {
 
 async function readProgressMetadata(chunkDir) {
   try {
-    const raw = await readFile(join(chunkDir, "progress.json"), "utf8");
+    const raw = await readTextFileWithRetry(join(chunkDir, "progress.json"));
     const progress = JSON.parse(raw.replace(/^\uFEFF/, ""));
     return {
       totalChunks:
@@ -137,12 +139,36 @@ async function readProgressMetadata(chunkDir) {
       updatedAt: typeof progress.updatedAt === "string" ? progress.updatedAt : undefined,
     };
   } catch (error) {
-    if (error.code === "ENOENT" || error instanceof SyntaxError) {
+    if (
+      error.code === "ENOENT" ||
+      TRANSIENT_PROGRESS_READ_ERROR_CODES.has(error.code) ||
+      error instanceof SyntaxError
+    ) {
       return { totalChunks: 0 };
     }
 
     throw error;
   }
+}
+
+async function readTextFileWithRetry(path, attempts = 6) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await readFile(path, "utf8");
+    } catch (error) {
+      if (!TRANSIENT_PROGRESS_READ_ERROR_CODES.has(error.code) || attempt === attempts) {
+        throw error;
+      }
+
+      await delay(75 * attempt);
+    }
+  }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function escapeRegExp(value) {

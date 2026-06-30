@@ -284,3 +284,11 @@ test("writes generation progress with retry to tolerate popup polling", async ()
   assert.match(script, /Set-Utf8TextFileWithRetry -Path \$Path -Value/);
   assert.match(script, /Set-Utf8TextFileWithRetry -Path \$progressPath -Value/);
 });
+
+test("reads generation progress with retry to tolerate transient file locks", async () => {
+  const source = await readFile("./src/generator.js", "utf8");
+
+  assert.match(source, /TRANSIENT_PROGRESS_READ_ERROR_CODES = new Set\(\["EBUSY", "EPERM"\]\)/);
+  assert.match(source, /readTextFileWithRetry\(join\(chunkDir, "progress\.json"\)\)/);
+  assert.match(source, /setTimeout\(resolve, ms\)/);
+});

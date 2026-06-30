@@ -12,6 +12,7 @@
 - Existing saved generation defaults are migrated once so older default settings move to the new defaults.
 - Progress labels no longer show polling details such as "checked just now" or "next check in 1s".
 - Progress metadata writes now retry through a temporary file to avoid failures when the popup polls `progress.json`.
+- Progress metadata reads now retry and fall back to chunk-file progress if Windows briefly locks `progress.json`.
 - Resume now uses the saved video id for cancelled generations, so it does not require the video iframe to answer before continuing.
 - Video frame registration is refreshed over time to handle delayed iframe loads and Academy page navigation.
 
